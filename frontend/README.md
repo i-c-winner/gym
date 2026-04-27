@@ -17,3 +17,10 @@
 npm install
 npm run dev
 ```
+
+По умолчанию frontend проксирует `/api/v1/*` на `http://127.0.0.1:8000/api/v1/*`.
+Если backend запущен на другом адресе, укажите:
+
+```bash
+API_PROXY_TARGET=http://127.0.0.1:8001 npm run dev
+```

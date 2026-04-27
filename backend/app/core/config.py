@@ -37,6 +37,13 @@ def env_optional_str(name: str) -> str | None:
     return value if value not in (None, "") else None
 
 
+def env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    value = os.getenv(name)
+    if value in (None, ""):
+        return default
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
 load_dotenv()
 
 
@@ -58,6 +65,13 @@ class Settings:
     refresh_token_ttl_seconds: int = env_int("REFRESH_TOKEN_TTL_SECONDS", 60 * 60 * 24 * 30)
     secure_cookies: bool = env_bool("SECURE_COOKIES", True)
     same_site: str = env_str("SAME_SITE", "lax")
+    cors_origins: tuple[str, ...] = env_list(
+        "CORS_ORIGINS",
+        (
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ),
+    )
     webhook_secret: str = env_str("WEBHOOK_SECRET", "change-me")
     csrf_header_name: str = env_str("CSRF_HEADER_NAME", "X-CSRF-Token")
     celery_broker_url: str = env_str("CELERY_BROKER_URL", "redis://localhost:6379/1")
@@ -67,6 +81,8 @@ class Settings:
     rate_limit_window_seconds: int = env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
     resource_cache_ttl_seconds: int = env_int("RESOURCE_CACHE_TTL_SECONDS", 300)
     default_from_email: str = env_str("DEFAULT_FROM_EMAIL", "no-reply@example.com")
+    telegram_bot_token: str | None = env_optional_str("TELEGRAM_BOT_TOKEN")
+    telegram_auth_max_age_seconds: int = env_int("TELEGRAM_AUTH_MAX_AGE_SECONDS", 60 * 60 * 24)
     session_cookie_domain: str | None = env_optional_str("SESSION_COOKIE_DOMAIN")
     access_content_placeholder: str = env_str("ACCESS_CONTENT_PLACEHOLDER", "Protected resource content.")
     webhook_signature_header: str = env_str("WEBHOOK_SIGNATURE_HEADER", "X-Payment-Signature")

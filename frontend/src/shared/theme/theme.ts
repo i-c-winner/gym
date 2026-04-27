@@ -22,7 +22,8 @@ export const appTheme = createTheme({
     borderRadius: 18,
   },
   typography: {
-    fontFamily: "var(--font-sans), sans-serif",
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     h2: {
       fontWeight: 800,
     },

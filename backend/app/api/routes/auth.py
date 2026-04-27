@@ -11,6 +11,7 @@ from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
 from app.services.auth_service import auth_service
 from app.services.rate_limit_service import rate_limit_service
 from app.services.session_service import session_service
+from app.services.telegram_auth_service import telegram_auth_service
 
 router = APIRouter()
 
@@ -20,10 +21,20 @@ router = APIRouter()
     response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register user",
-    description="Creates a user and starts a server-side session. Provide telephone or telegram_id.",
+    description="Creates a user and starts a server-side session. Provide telephone or Telegram Login Widget payload.",
 )
 async def register(payload: RegisterRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)) -> AuthResponse:
-    identifier = payload.telephone or payload.telegram_id or (request.client.host if request.client else "unknown")
+    telegram_id = None
+    first_name = payload.first_name
+    last_name = payload.last_name
+
+    if payload.telegram_auth:
+        telegram_auth = telegram_auth_service.verify_login_payload(payload.telegram_auth.model_dump())
+        telegram_id = str(telegram_auth["id"])
+        first_name = first_name or telegram_auth.get("first_name")
+        last_name = last_name or telegram_auth.get("last_name")
+
+    identifier = payload.telephone or telegram_id or (request.client.host if request.client else "unknown")
     await rate_limit_service.check(
         rate_limit_service.register_bucket(identifier),
         settings.register_rate_limit,
@@ -32,9 +43,9 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
     user = await auth_service.register(
         db,
         payload.telephone,
-        payload.telegram_id,
-        payload.first_name,
-        payload.last_name,
+        telegram_id,
+        first_name,
+        last_name,
         payload.age,
         payload.gender,
     )
@@ -63,10 +74,15 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
     "/login",
     response_model=AuthResponse,
     summary="Login user",
-    description="Authenticates by telephone or telegram_id and issues session cookies.",
+    description="Authenticates by telephone or Telegram Login Widget payload and issues session cookies.",
 )
 async def login(payload: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)) -> AuthResponse:
-    identifier = payload.telephone or payload.telegram_id or (request.client.host if request.client else "unknown")
+    telegram_id = None
+    if payload.telegram_auth:
+        telegram_auth = telegram_auth_service.verify_login_payload(payload.telegram_auth.model_dump())
+        telegram_id = str(telegram_auth["id"])
+
+    identifier = payload.telephone or telegram_id or (request.client.host if request.client else "unknown")
     await rate_limit_service.check(
         rate_limit_service.login_bucket(identifier),
         settings.login_rate_limit,
@@ -75,7 +91,7 @@ async def login(payload: LoginRequest, request: Request, response: Response, db:
     user = await auth_service.authenticate(
         db,
         telephone=payload.telephone,
-        telegram_id=payload.telegram_id,
+        telegram_id=telegram_id,
     )
     session_id, refresh_token, db_session = await session_service.create_session(
         db,

@@ -1,5 +1,26 @@
+"use client";
+
+import { useEffect } from "react";
+
+import { RegistrationPanel, useAuth } from "@/features/auth";
 import { HomeHero } from "@/widgets/home-hero";
 
 export function HomePage() {
-  return <HomeHero />;
+  const { checkAuth, status, user } = useAuth();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void checkAuth();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [checkAuth]);
+
+  if (status === "anonymous") {
+    return <RegistrationPanel />;
+  }
+
+  return <HomeHero authStatus={status} userName={user?.firstName ?? user?.telephone} />;
 }
+
+export default HomePage;
