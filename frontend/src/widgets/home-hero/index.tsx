@@ -1,6 +1,10 @@
+import Link from "next/link";
+
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import type { AuthStatus } from "@/features/auth";
@@ -58,6 +62,13 @@ export function HomeHero({ authStatus, userName }: HomeHeroProps) {
             <Typography color="text.secondary" sx={{ mt: 2 }}>
               Здесь пока пусто
             </Typography>
+            {authStatus === "authenticated" ? (
+              <Stack direction="row" spacing={1.5} sx={{ mt: 3, justifyContent: "center" }}>
+                <Button component={Link} href="/profile" variant="contained">
+                  Личный кабинет
+                </Button>
+              </Stack>
+            ) : null}
           </Box>
         </Paper>
       </Container>

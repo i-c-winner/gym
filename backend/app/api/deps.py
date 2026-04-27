@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -17,7 +18,13 @@ async def get_current_session(
     db: AsyncSession = Depends(get_db),
     session_id: str | None = Cookie(default=None, alias=settings.session_cookie_name),
 ) -> tuple[dict[str, Any], DbSession]:
-    session_data = await session_service.get_session_data(session_id)
+    try:
+        session_data = await session_service.get_session_data(session_id)
+    except RedisError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session storage is unavailable",
+        ) from exc
     if not session_data:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
     db_session = await db.get(DbSession, session_data["db_session_id"])

@@ -10,7 +10,9 @@ export function HomePage() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void checkAuth();
+      void checkAuth().catch((error: unknown) => {
+        console.error("Initial auth check failed", error);
+      });
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -22,5 +24,3 @@ export function HomePage() {
 
   return <HomeHero authStatus={status} userName={user?.firstName ?? user?.telephone} />;
 }
-
-export default HomePage;

@@ -36,7 +36,7 @@ const telegramBotUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
 export function RegistrationPanel() {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
-  const { register, login, status } = useAuth();
+  const { register, login, status, authError } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isTelegramRegistering, setIsTelegramRegistering] = useState(false);
 
@@ -129,6 +129,7 @@ export function RegistrationPanel() {
               </Typography>
             </Box>
 
+            {authError ? <Alert severity="warning">{authError}</Alert> : null}
             {error ? <Alert severity="error">{error}</Alert> : null}
 
             <Stack spacing={2}>
