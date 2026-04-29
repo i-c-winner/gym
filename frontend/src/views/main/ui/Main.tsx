@@ -1,9 +1,9 @@
 import {Box} from "@mui/system";
-import {Typography} from "@mui/material";
 import {Triptich} from "@/widgets/triptych/ui/Triptich";
 import {Double} from "@/widgets/double/ui/Double";
 import {Haos} from "@/widgets/haos/ui/Haos";
 import {Galery} from "@/entities/galery/Galery";
+import {Orders} from "@/entities/orders/Orders";
 
 const items=[
   {
@@ -40,7 +40,7 @@ function Main() {
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        backgroundColor: "#f5f0e7",
+        bgcolor: "background.default",
       }}
     >
       <Box
@@ -59,7 +59,7 @@ function Main() {
 
         sx={{
           width: "100%",
-          backgroundColor: "#f5f0e7",
+          bgcolor: "background.default",
           px: { xs: 2, sm: 3, md: 5 },
           py: { xs: 6, sm: 8, md: 10 },
         }}
@@ -68,6 +68,7 @@ function Main() {
           <Haos />
           <Double />
         <Galery items={items} />
+        <Orders/>
       </Box>
     </Box>
   );

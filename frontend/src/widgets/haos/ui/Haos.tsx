@@ -59,7 +59,7 @@ function Haos() {
           borderRadius: { xs: "14px", md: "18px" },
           px: { xs: 2, sm: 3, md: 5 },
           py: { xs: 4, sm: 5, md: 6 },
-          backgroundColor: "#cec3b6",
+          backgroundColor: "secondary.main",
           backgroundImage:
             "linear-gradient(180deg, rgba(116, 101, 86, 0.18) 0%, rgba(116, 101, 86, 0.3) 100%), url('/images/haos.jpeg')",
           backgroundPosition: "center",
@@ -67,19 +67,7 @@ function Haos() {
           backgroundSize: "cover",
         }}
       >
-        <Typography
-          sx={{
-            position: "relative",
-            zIndex: 1,
-            mb: { xs: 3, md: 4 },
-            textAlign: "center",
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontSize: { xs: "32px", sm: "40px", md: "52px" },
-            lineHeight: 1.08,
-            color: "#fffaf3",
-            textShadow: "0 2px 16px rgba(62, 56, 47, 0.22)",
-          }}
-        >
+        <Typography className="haos-title">
           Что любят наши участники
         </Typography>
 
@@ -92,19 +80,12 @@ function Haos() {
                   borderRadius: "10px",
                   px: { xs: 2, md: 2.5 },
                   py: review.py,
-                  backgroundColor: "rgba(250, 246, 239, 0.92)",
+                  bgcolor: "background.paper",
                   boxShadow: "0 10px 24px rgba(71, 58, 45, 0.08)",
                   backdropFilter: "blur(2px)",
                 }}
               >
-                <Typography
-                  sx={{
-                    textAlign: "center",
-                    fontSize: { xs: "14px", md: "15px" },
-                    lineHeight: 1.6,
-                    color: "#52493f",
-                  }}
-                >
+                <Typography className="haos-review">
                   {review.text}
                 </Typography>
               </Box>

@@ -28,17 +28,17 @@ function Triptich() {
     margin: "5px auto 0",
   }}
   >
-    <Typography>
+    <Typography className="triptych-main-title">
       Добро пожаловать в метод Gym Balance
     </Typography>
 
-    <Typography >
+    <Typography className="triptych-body">
       Каждое занятие сочетает комфортную нагрузку и восстановление, чтобы вы
       становились сильнее, чувствовали тело лучше и тренировались в устойчивом,
       спокойном ритме без перегруза.
     </Typography>
 
-    <Typography>
+    <Typography className="triptych-lead">
       Подход строится вокруг трех ключевых принципов.
     </Typography>
     <Box
@@ -57,7 +57,7 @@ function Triptich() {
               aspectRatio: "0.9 / 1",
               borderRadius: "8px",
               overflow: "hidden",
-              backgroundColor: "#e8e0d3",
+              bgcolor: "background.paper",
               backgroundImage: `url('${pillar.image}')`,
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
@@ -65,10 +65,10 @@ function Triptich() {
             }}
           />
 
-          <Typography>
+          <Typography className="triptych-card-title">
             {pillar.title}
           </Typography>
-          <Typography>
+          <Typography className="triptych-card-text">
             {pillar.description}
           </Typography>
         </Box>

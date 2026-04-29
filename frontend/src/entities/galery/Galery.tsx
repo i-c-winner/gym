@@ -84,10 +84,10 @@ function Galery({
           height: 42,
           borderRadius: "4px",
           border: "1px solid rgba(93, 86, 77, 0.28)",
-          backgroundColor: "rgba(246, 239, 229, 0.96)",
+          bgcolor: "background.paper",
           color: "#5a5147",
           "&:hover": {
-            backgroundColor: "rgba(255,255,255,0.98)",
+            bgcolor: "background.paper",
           },
         }}
       >
@@ -108,10 +108,10 @@ function Galery({
           height: 42,
           borderRadius: "4px",
           border: "1px solid rgba(93, 86, 77, 0.28)",
-          backgroundColor: "rgba(246, 239, 229, 0.96)",
+          bgcolor: "background.paper",
           color: "#5a5147",
           "&:hover": {
-            backgroundColor: "rgba(255,255,255,0.98)",
+            bgcolor: "background.paper",
           },
         }}
       >
@@ -183,24 +183,23 @@ function Galery({
                 border: "none",
                 p: 0,
                 cursor: "pointer",
-                backgroundColor: isActive ? "#cfaeb4" : "rgba(207, 174, 180, 0.5)",
+                bgcolor: isActive ? "secondary.main" : "background.paper",
               }}
             />
           );
         })}
       </Box>
 
-      <Typography
+      <Box
         sx={{
           mt: 1.5,
-          textAlign: "center",
-          fontSize: "13px",
-          color: "#7a7065",
           display: { xs: "block", sm: "none" },
         }}
       >
-        Листайте влево и вправо, чтобы посмотреть все превью.
-      </Typography>
+        <Typography className="gallery-hint">
+          Листайте влево и вправо, чтобы посмотреть все превью.
+        </Typography>
+      </Box>
     </Box>
   );
 }
