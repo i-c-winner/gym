@@ -5,7 +5,9 @@ function Double() {
   return (
     <Box
       sx={{
-        mt: { xs: 6, md: 10 },
+        maxWidth: "80%",
+        margin: "5px auto 0",
+        my: { xs: 6, md: 10 },
         display: "grid",
         gridTemplateColumns: { xs: "1fr", md: "1.05fr 0.95fr" },
         gap: { xs: 3, sm: 4, md: 5 },
