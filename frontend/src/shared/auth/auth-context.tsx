@@ -9,107 +9,218 @@ import {
   useState,
 } from "react";
 
-const AUTH_STORAGE_KEY = "gym.isAuthenticated";
-const AUTH_USER_STORAGE_KEY = "gym.telegramUser";
+const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+const CSRF_STORAGE_KEY = "gym.csrfToken";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
 type TelegramUser = {
   id: number;
-  first_name: string;
+  first_name?: string;
   last_name?: string;
   username?: string;
   photo_url?: string;
-  auth_date?: number;
-  hash?: string;
+  auth_date: number;
+  hash: string;
+};
+
+type AuthUser = {
+  id: string;
+  telephone: string | null;
+  telegram_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  age: number | null;
+  gender: string | null;
+  created_at?: string;
+};
+
+type AuthPayload = {
+  user_id: string;
+  telephone: string | null;
+  telegram_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  age: number | null;
+  gender: string | null;
+  csrf_token: string;
+};
+
+type ApiError = Error & {
+  status?: number;
 };
 
 type AuthContextValue = {
   status: AuthStatus;
   isAuthenticated: boolean;
-  user: TelegramUser | null;
-  checkAuth: () => void;
-  login: (user?: TelegramUser | null) => void;
-  logout: () => void;
+  user: AuthUser | null;
+  csrfToken: string | null;
+  checkAuth: () => Promise<void>;
+  authenticateWithTelegram: (telegramUser: TelegramUser) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readAuthFlag(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.localStorage.getItem(AUTH_STORAGE_KEY) === "true";
-}
-
-function readAuthUser(): TelegramUser | null {
+function readCsrfToken(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const raw = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as TelegramUser;
-  } catch {
-    return null;
-  }
+  return window.sessionStorage.getItem(CSRF_STORAGE_KEY);
 }
 
-function writeAuthFlag(value: boolean): void {
+function writeCsrfToken(value: string | null): void {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(AUTH_STORAGE_KEY, String(value));
+  if (!value) {
+    window.sessionStorage.removeItem(CSRF_STORAGE_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(CSRF_STORAGE_KEY, value);
 }
 
-function writeAuthUser(user: TelegramUser | null): void {
-  if (typeof window === "undefined") {
-    return;
+async function parseJson<T>(response: Response): Promise<T | null> {
+  const text = await response.text();
+  if (!text) {
+    return null;
   }
 
-  if (!user) {
-    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
-    return;
+  return JSON.parse(text) as T;
+}
+
+function buildApiError(message: string, status?: number): ApiError {
+  const error = new Error(message) as ApiError;
+  error.status = status;
+  return error;
+}
+
+function mapAuthPayload(payload: AuthPayload): AuthUser {
+  return {
+    id: payload.user_id,
+    telephone: payload.telephone,
+    telegram_id: payload.telegram_id,
+    first_name: payload.first_name,
+    last_name: payload.last_name,
+    age: payload.age,
+    gender: payload.gender,
+  };
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const response = await fetch(`${API_PREFIX}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const payload = await parseJson<{ detail?: string }>(response).catch(() => null);
+    throw buildApiError(payload?.detail ?? response.statusText, response.status);
   }
 
-  window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+  return parseJson<T>(response);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
-  const [user, setUser] = useState<TelegramUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
-  const checkAuth = useCallback(() => {
-    const nextUser = readAuthUser();
-    const nextStatus = readAuthFlag() ? "authenticated" : "anonymous";
+  const checkAuth = useCallback(async () => {
+    try {
+      const currentUser = await request<AuthUser>("/me", { method: "GET" });
+      setUser(currentUser);
+      setCsrfToken(readCsrfToken());
+      setStatus("authenticated");
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError.status === 401) {
+        setUser(null);
+        setCsrfToken(null);
+        writeCsrfToken(null);
+        setStatus("anonymous");
+        return;
+      }
 
-    setUser(nextUser);
-    setStatus(nextStatus);
+      throw error;
+    }
   }, []);
 
-  const login = useCallback((nextUser?: TelegramUser | null) => {
-    writeAuthFlag(true);
-    writeAuthUser(nextUser ?? null);
-    setUser(nextUser ?? null);
-    setStatus("authenticated");
+  const authenticateWithTelegram = useCallback(async (telegramUser: TelegramUser) => {
+    const body = JSON.stringify({
+      telegram_auth: telegramUser,
+    });
+
+    const finalizeAuth = (payload: AuthPayload | null) => {
+      if (!payload) {
+        throw buildApiError("Пустой ответ авторизации");
+      }
+
+      const nextUser = mapAuthPayload(payload);
+      writeCsrfToken(payload.csrf_token);
+      setUser(nextUser);
+      setCsrfToken(payload.csrf_token);
+      setStatus("authenticated");
+    };
+
+    try {
+      const payload = await request<AuthPayload>("/auth/register", {
+        method: "POST",
+        body,
+      });
+      finalizeAuth(payload);
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError.status !== 409) {
+        throw error;
+      }
+
+      const payload = await request<AuthPayload>("/auth/login", {
+        method: "POST",
+        body,
+      });
+      finalizeAuth(payload);
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    writeAuthFlag(false);
-    writeAuthUser(null);
+  const logout = useCallback(async () => {
+    const storedCsrfToken = csrfToken ?? readCsrfToken();
+
+    if (storedCsrfToken) {
+      try {
+        await request("/auth/logout", {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": storedCsrfToken,
+          },
+        });
+      } catch (error) {
+        const apiError = error as ApiError;
+        if (apiError.status && apiError.status !== 401) {
+          throw error;
+        }
+      }
+    }
+
+    writeCsrfToken(null);
     setUser(null);
+    setCsrfToken(null);
     setStatus("anonymous");
-  }, []);
+  }, [csrfToken]);
 
   useEffect(() => {
-    checkAuth();
+    void checkAuth().catch(() => {
+      setUser(null);
+      setCsrfToken(null);
+      setStatus("anonymous");
+    });
   }, [checkAuth]);
 
   const value = useMemo<AuthContextValue>(
@@ -117,11 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status,
       isAuthenticated: status === "authenticated",
       user,
+      csrfToken,
       checkAuth,
-      login,
+      authenticateWithTelegram,
       logout,
     }),
-    [checkAuth, login, logout, status, user],
+    [authenticateWithTelegram, checkAuth, csrfToken, logout, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -137,4 +249,4 @@ export function useAuth() {
   return context;
 }
 
-export type { TelegramUser };
+export type { AuthUser, TelegramUser };

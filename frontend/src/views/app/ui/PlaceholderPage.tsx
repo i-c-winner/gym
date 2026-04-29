@@ -11,7 +11,14 @@ declare global {
 }
 
 export function PlaceholderPage() {
-  const { status, isAuthenticated, user, login, logout, checkAuth } = useAuth();
+  const {
+    status,
+    isAuthenticated,
+    user,
+    authenticateWithTelegram,
+    logout,
+    checkAuth,
+  } = useAuth();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
@@ -21,7 +28,9 @@ export function PlaceholderPage() {
     }
 
     window.__onTelegramAuth = (telegramUser: TelegramUser) => {
-      login(telegramUser);
+      void authenticateWithTelegram(telegramUser).catch((error: unknown) => {
+        console.error("Telegram auth failed", error);
+      });
     };
 
     const script = document.createElement("script");
@@ -43,7 +52,7 @@ export function PlaceholderPage() {
         delete window.__onTelegramAuth;
       }
     };
-  }, [botUsername, login]);
+  }, [authenticateWithTelegram, botUsername]);
 
   return (
     <main
@@ -141,21 +150,11 @@ export function PlaceholderPage() {
           }}
         >
           <button
-            onClick={() => login()}
-            style={{
-              minHeight: "40px",
-              padding: "0 16px",
-              borderRadius: "10px",
-              border: "none",
-              background: "#2e7d32",
-              color: "#fff",
-              cursor: "pointer",
+            onClick={() => {
+              void logout().catch((error: unknown) => {
+                console.error("Logout failed", error);
+              });
             }}
-          >
-            Пометить как авторизованного
-          </button>
-          <button
-            onClick={logout}
             style={{
               minHeight: "40px",
               padding: "0 16px",
@@ -166,10 +165,14 @@ export function PlaceholderPage() {
               cursor: "pointer",
             }}
           >
-            Сбросить авторизацию
+            Выйти
           </button>
           <button
-            onClick={checkAuth}
+            onClick={() => {
+              void checkAuth().catch((error: unknown) => {
+                console.error("Auth status check failed", error);
+              });
+            }}
             style={{
               minHeight: "40px",
               padding: "0 16px",
