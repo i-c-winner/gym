@@ -44,3 +44,41 @@ Key variables:
 ```bash
 uvicorn app.main:app --reload
 ```
+
+## Railway
+
+Backend is prepared for deployment to Railway as a separate service from the `backend/` directory.
+
+Included files:
+
+- [Procfile](/Users/dmitriy/Projects/work/gym/backend/Procfile)
+- [railway.json](/Users/dmitriy/Projects/work/gym/backend/railway.json)
+
+What is already handled:
+
+- Railway `PORT` is supported.
+- `DATABASE_URL` from Railway is normalized to SQLAlchemy format:
+  - `postgres://...` -> `postgresql+psycopg://...`
+  - `postgresql://...` -> `postgresql+psycopg://...`
+- healthcheck endpoint is available at `/health`
+- database migrations run on service start
+
+Minimum variables for Railway:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `TELEGRAM_BOT_TOKEN`
+- `WEBHOOK_SECRET`
+- `SECURE_COOKIES`
+- `SAME_SITE`
+- `SESSION_COOKIE_DOMAIN`
+
+Recommended values for production:
+
+```env
+SECURE_COOKIES=true
+SAME_SITE=none
+SESSION_COOKIE_DOMAIN=
+```
+
+If frontend is deployed on another Railway domain, add it to `CORS_ORIGINS`.

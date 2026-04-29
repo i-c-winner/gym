@@ -44,6 +44,14 @@ def env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
 load_dotenv()
 
 
@@ -57,8 +65,12 @@ load_dotenv()
 class Settings:
     app_name: str = env_str("APP_NAME", "Gym Backend")
     api_prefix: str = env_str("API_PREFIX", "/api/v1")
-    database_url: str = env_str("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/gym")
+    database_url: str = normalize_database_url(
+        env_str("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/gym")
+    )
     redis_url: str = env_str("REDIS_URL", "redis://localhost:6379/0")
+    host: str = env_str("HOST", "0.0.0.0")
+    port: int = env_int("PORT", 8000)
     session_cookie_name: str = env_str("SESSION_COOKIE_NAME", "sid")
     refresh_cookie_name: str = env_str("REFRESH_COOKIE_NAME", "refresh_token")
     session_ttl_seconds: int = env_int("SESSION_TTL_SECONDS", 60 * 60)
