@@ -46,27 +46,10 @@ function Triptich() {
           }}
         />
 
-        <Typography
-
-          sx={{
-            mt: 2.5,
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontSize: { xs: "28px", md: "34px" },
-            lineHeight: 1.1,
-            color: "#3e382f",
-          }}
-        >
+        <Typography>
           {pillar.title}
         </Typography>
-
-        <Typography
-          sx={{
-            mt: 1.5,
-            fontSize: { xs: "16px", md: "17px" },
-            lineHeight: 1.7,
-            color: "#544d44",
-          }}
-        >
+        <Typography>
           {pillar.description}
         </Typography>
       </Box>

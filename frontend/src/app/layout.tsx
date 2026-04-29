@@ -5,7 +5,7 @@ import "@fontsource/open-sauce-one/700.css";
 
 import type { Metadata } from "next";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
-import { AuthProvider } from "@/shared/auth/auth-context";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Gym Frontend",
@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="ru">
       <body>
         <AppRouterCacheProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <Providers>{children}</Providers>
         </AppRouterCacheProvider>
       </body>
     </html>
