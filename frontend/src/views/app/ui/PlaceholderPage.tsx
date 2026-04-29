@@ -1,9 +1,49 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/shared/auth/auth-context";
+import type { TelegramUser } from "@/shared/auth/auth-context";
+
+declare global {
+  interface Window {
+    __onTelegramAuth?: (user: TelegramUser) => void;
+  }
+}
 
 export function PlaceholderPage() {
-  const { status, isAuthenticated, login, logout, checkAuth } = useAuth();
+  const { status, isAuthenticated, user, login, logout, checkAuth } = useAuth();
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+
+  useEffect(() => {
+    if (!widgetRef.current || !botUsername) {
+      return;
+    }
+
+    window.__onTelegramAuth = (telegramUser: TelegramUser) => {
+      login(telegramUser);
+    };
+
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.async = true;
+    script.setAttribute("data-telegram-login", botUsername);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "10");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-userpic", "false");
+    script.setAttribute("data-lang", "ru");
+    script.setAttribute("data-onauth", "window.__onTelegramAuth(user)");
+
+    widgetRef.current.innerHTML = "";
+    widgetRef.current.appendChild(script);
+
+    return () => {
+      if (window.__onTelegramAuth) {
+        delete window.__onTelegramAuth;
+      }
+    };
+  }, [botUsername, login]);
 
   return (
     <main
@@ -61,6 +101,34 @@ export function PlaceholderPage() {
           <p style={{ margin: "8px 0 0", fontSize: "14px", color: "#4f5b4e" }}>
             Пользователь авторизован: <strong>{isAuthenticated ? "да" : "нет"}</strong>
           </p>
+          <p style={{ margin: "8px 0 0", fontSize: "14px", color: "#4f5b4e" }}>
+            Пользователь Telegram: <strong>{user?.first_name ?? "не выбран"}</strong>
+          </p>
+        </div>
+
+        <div
+          style={{
+            marginTop: "20px",
+            display: "grid",
+            gap: "12px",
+            justifyItems: "center",
+          }}
+        >
+          <div
+            ref={widgetRef}
+            style={{
+              width: "100%",
+              minHeight: "54px",
+              display: "grid",
+              placeItems: "center",
+            }}
+          />
+
+          {!botUsername ? (
+            <p style={{ margin: 0, fontSize: "13px", color: "#8b5a5a" }}>
+              Укажите `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` в `.env.local`, чтобы включить Telegram Login Widget.
+            </p>
+          ) : null}
         </div>
 
         <div
@@ -73,7 +141,7 @@ export function PlaceholderPage() {
           }}
         >
           <button
-            onClick={login}
+            onClick={() => login()}
             style={{
               minHeight: "40px",
               padding: "0 16px",

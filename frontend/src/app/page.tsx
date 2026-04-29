@@ -1,4 +1,4 @@
-import {PlaceholderPage} from "@/views/app/PlaceholderPage";
+import {PlaceholderPage} from "@/views/app/ui/PlaceholderPage";
 
 
 export default function Page() {
