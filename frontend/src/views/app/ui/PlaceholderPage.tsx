@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/shared/auth/auth-context";
 import type { TelegramUser } from "@/shared/auth/auth-context";
 
@@ -11,6 +12,7 @@ declare global {
 }
 
 export function PlaceholderPage() {
+  const router = useRouter();
   const {
     status,
     isAuthenticated,
@@ -23,14 +25,24 @@ export function PlaceholderPage() {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
   useEffect(() => {
+    if (status === "authenticated" && isAuthenticated) {
+      router.replace("/main");
+    }
+  }, [isAuthenticated, router, status]);
+
+  useEffect(() => {
     if (!widgetRef.current || !botUsername) {
       return;
     }
 
     window.__onTelegramAuth = (telegramUser: TelegramUser) => {
-      void authenticateWithTelegram(telegramUser).catch((error: unknown) => {
-        console.error("Telegram auth failed", error);
-      });
+      void authenticateWithTelegram(telegramUser)
+        .then(() => {
+          router.replace("/main");
+        })
+        .catch((error: unknown) => {
+          console.error("Telegram auth failed", error);
+        });
     };
 
     const script = document.createElement("script");
@@ -52,7 +64,7 @@ export function PlaceholderPage() {
         delete window.__onTelegramAuth;
       }
     };
-  }, [authenticateWithTelegram, botUsername]);
+  }, [authenticateWithTelegram, botUsername, router]);
 
   return (
     <main
