@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.core.config import normalize_database_url
 from app.db.base import Base
 from app.models import *  # noqa: F403
 
@@ -28,7 +29,9 @@ def load_dotenv_file(path: Path) -> None:
 
 
 load_dotenv_file(PROJECT_ROOT / ".env")
-database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+database_url = normalize_database_url(
+    os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+)
 config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
