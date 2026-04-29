@@ -1,6 +1,7 @@
 import {Box} from "@mui/system";
 import {Typography} from "@mui/material";
 import {Triptich} from "@/widgets/triptych/Triptich";
+import {Double} from "@/widgets/double/Double";
 
 function Main() {
 
@@ -102,6 +103,7 @@ function Main() {
             Подход строится вокруг трех ключевых принципов.
           </Typography>
          <Triptich/>
+          <Double />
         </Box>
       </Box>
     </Box>
