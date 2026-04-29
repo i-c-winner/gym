@@ -1,13 +1,15 @@
-import type { Metadata } from "next";
-import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
-
-import { AppProviders } from "@/shared/providers/app-providers";
-
 import "./globals.css";
+import "@fontsource/open-sauce-one/400.css";
+import "@fontsource/open-sauce-one/500.css";
+import "@fontsource/open-sauce-one/700.css";
+
+import type { Metadata } from "next";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
+import { AuthProvider } from "@/shared/auth/auth-context";
 
 export const metadata: Metadata = {
   title: "Gym Frontend",
-  description: "Next.js frontend scaffold for the gym workspace.",
+  description: "Простая заглушка фронтенда.",
 };
 
 export default function RootLayout({
@@ -19,7 +21,7 @@ export default function RootLayout({
     <html lang="ru">
       <body>
         <AppRouterCacheProvider>
-          <AppProviders>{children}</AppProviders>
+          <AuthProvider>{children}</AuthProvider>
         </AppRouterCacheProvider>
       </body>
     </html>

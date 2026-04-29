@@ -1,5 +1,6 @@
-import { HomePage } from "./home/home-page";
+import {PlaceholderPage} from "@/views/app/PlaceholderPage";
+
 
 export default function Page() {
-  return <HomePage />;
+  return <PlaceholderPage />;
 }
