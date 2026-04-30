@@ -7,7 +7,7 @@ function Header() {
   const items = [
     { label: "Регистрация", href: "/" },
     { label: "Главная", href: "/main" },
-    { label: "Кабинет", href: "/main" },
+    { label: "Кабинет", href: "/account" },
   ];
 
   return (
