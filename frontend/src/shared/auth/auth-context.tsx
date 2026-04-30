@@ -240,7 +240,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
+  const isDev = process.env.NODE_ENV === 'development';
   const context = useContext(AuthContext);
+  if (isDev) {
+    const devAuthContext: AuthContextValue = {
+      status: "authenticated",
+      isAuthenticated: true,
+      user: {
+        id: "dev-id",
+        telephone: null,
+        telegram_id: "123456789",
+        first_name: "Dev",
+        last_name: "User",
+        age: null,
+        gender: null,
+      },
+      csrfToken: null,
+      checkAuth: async () => {},
+      authenticateWithTelegram: async () => {},
+      logout: async () => {},
+    };
+    return devAuthContext
+  }
+
 
   if (!context) {
     throw new Error("useAuth must be used inside AuthProvider");

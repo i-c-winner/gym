@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/shared/auth/auth-context";
 import type { TelegramUser } from "@/shared/auth/auth-context";
 
+const isDevelopment = process.env.NODE_ENV === "development";
 declare global {
   interface Window {
     __onTelegramAuth?: (user: TelegramUser) => void;
@@ -25,11 +26,20 @@ export function PlaceholderPage() {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
   useEffect(() => {
+    const isDev = process.env.NODE_ENV === "development";
+    const disableAuthRedirect =
+      process.env.NEXT_PUBLIC_DISABLE_AUTH_REDIRECT === "true";
+
+    if (isDev && disableAuthRedirect) {
+      return;
+    }
+
     if (status === "authenticated" && isAuthenticated) {
       router.replace("/main");
+    } else if (status !== "loading" && !isAuthenticated) {
+      router.replace("/auth/login");
     }
   }, [isAuthenticated, router, status]);
-
   useEffect(() => {
     if (!widgetRef.current || !botUsername) {
       return;
