@@ -4,6 +4,7 @@ import {Double} from "@/widgets/double/ui/Double";
 import {Haos} from "@/widgets/haos/ui/Haos";
 import {Galery} from "@/entities/galery/Galery";
 import {Orders} from "@/entities/orders/Orders";
+import {Header} from "@/entities/heders/api/Header";
 
 const items=[
   {
@@ -43,9 +44,12 @@ function Main() {
         bgcolor: "background.default",
       }}
     >
+      <Header />
+
       <Box
         className="top-image"
         sx={{
+          position: "absolute",
           width: "100%",
           backgroundImage: "url('/images/top.jpeg')",
           backgroundPosition: "center",
