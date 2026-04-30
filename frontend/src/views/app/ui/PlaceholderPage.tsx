@@ -37,7 +37,7 @@ export function PlaceholderPage() {
     if (status === "authenticated" && isAuthenticated) {
       router.replace("/main");
     } else if (status !== "loading" && !isAuthenticated) {
-      router.replace("/auth/login");
+      router.replace("/");
     }
   }, [isAuthenticated, router, status]);
   useEffect(() => {
