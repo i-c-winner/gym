@@ -11,6 +11,9 @@ import {
 
 const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 const CSRF_STORAGE_KEY = "gym.csrfToken";
+const DEV_AUTH_ENABLED =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_DEV_SKIP_AUTH === "true";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -134,6 +137,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   const checkAuth = useCallback(async () => {
+    if (DEV_AUTH_ENABLED) {
+      setUser({
+        id: "dev-id",
+        telephone: null,
+        telegram_id: "123456789",
+        first_name: "Dev",
+        last_name: "User",
+        age: null,
+        gender: null,
+      });
+      setCsrfToken(null);
+      setStatus("authenticated");
+      return;
+    }
+
     try {
       const currentUser = await request<AuthUser>("/me", { method: "GET" });
       setUser(currentUser);
@@ -154,6 +172,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const authenticateWithTelegram = useCallback(async (telegramUser: TelegramUser) => {
+    if (DEV_AUTH_ENABLED) {
+      setUser({
+        id: "dev-id",
+        telephone: null,
+        telegram_id: String(telegramUser.id),
+        first_name: telegramUser.first_name ?? "Dev",
+        last_name: telegramUser.last_name ?? "User",
+        age: null,
+        gender: null,
+      });
+      setCsrfToken(null);
+      setStatus("authenticated");
+      return;
+    }
+
     const body = JSON.stringify({
       telegram_auth: telegramUser,
     });
@@ -191,6 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (DEV_AUTH_ENABLED) {
+      setUser(null);
+      setCsrfToken(null);
+      setStatus("anonymous");
+      return;
+    }
+
     const storedCsrfToken = csrfToken ?? readCsrfToken();
 
     if (storedCsrfToken) {
@@ -240,29 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  const isDev = process.env.NODE_ENV === 'development';
   const context = useContext(AuthContext);
-  if (isDev) {
-    const devAuthContext: AuthContextValue = {
-      status: "authenticated",
-      isAuthenticated: true,
-      user: {
-        id: "dev-id",
-        telephone: null,
-        telegram_id: "123456789",
-        first_name: "Dev",
-        last_name: "User",
-        age: null,
-        gender: null,
-      },
-      csrfToken: null,
-      checkAuth: async () => {},
-      authenticateWithTelegram: async () => {},
-      logout: async () => {},
-    };
-    return devAuthContext
-  }
-
 
   if (!context) {
     throw new Error("useAuth must be used inside AuthProvider");

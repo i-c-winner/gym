@@ -31,17 +31,16 @@ cp .env.local.example .env.local
 API_PROXY_TARGET=http://127.0.0.1:8001 npm run dev
 ```
 
-## Mock Auth для UI-разработки
+## Dev bypass авторизации
 
-Если нужно разрабатывать интерфейс без реальной авторизации, включите mock auth:
+Если нужно в локальной разработке сразу попадать на `/main` без реальной авторизации, включите dev bypass:
 
 ```bash
-cp .env.local.example .env.local
-npm run dev
+NEXT_PUBLIC_DEV_SKIP_AUTH=true npm run dev
 ```
 
-В этом режиме frontend:
+Важно:
 
-- не требует реального логина или регистрации;
-- сразу считает пользователя авторизованным;
-- не зависит от backend для `/me`, `login`, `register`, `refresh`.
+- bypass работает только при `NODE_ENV=development`
+- в production этот флаг игнорируется
+- в production по-прежнему используется только реальная backend-auth с Telegram и server-side session
