@@ -16,9 +16,11 @@
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
     "@mui/material-nextjs": "latest",
+    "i18next": "^26.0.8",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-i18next": "^17.0.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",

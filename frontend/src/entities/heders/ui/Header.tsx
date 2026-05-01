@@ -1,14 +1,37 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Menu, MenuItem, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
+import { languageStorageKey } from "@/shared/i18n/config";
+
+const languages = [
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "uz", label: "O'zbek", flag: "🇺🇿" },
+  { code: "kk", label: "Қазақша", flag: "🇰🇿" },
+] as const;
 
 function Header() {
+  const { i18n } = useTranslation();
+  const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(
+    null,
+  );
+  const currentLanguage =
+    languages.find((language) => language.code === i18n.language) ??
+    languages[0];
+
   const items = [
     { label: "Регистрация", href: "/" },
     { label: "Главная", href: "/main" },
     { label: "Кабинет", href: "/account" },
   ];
+
+  const handleLanguageChange = (languageCode: (typeof languages)[number]["code"]) => {
+    void i18n.changeLanguage(languageCode);
+    window.localStorage.setItem(languageStorageKey, languageCode);
+    setLanguageAnchor(null);
+  };
 
   return (
     <Box
@@ -87,6 +110,83 @@ function Header() {
               {item.label}
             </Button>
           ))}
+          <Button
+            type="button"
+            aria-label="Выбрать язык"
+            aria-controls={languageAnchor ? "language-menu" : undefined}
+            aria-haspopup="menu"
+            aria-expanded={languageAnchor ? "true" : undefined}
+            onClick={(event) => setLanguageAnchor(event.currentTarget)}
+            sx={{
+              minWidth: 38,
+              width: 38,
+              height: 38,
+              p: 0,
+              ml: { xs: 0.25, sm: 0.5 },
+              borderRadius: "50%",
+              border: "2px solid #ffffff",
+              bgcolor: "rgba(255, 253, 248, 0.34)",
+              boxShadow: "0 6px 14px rgba(62, 56, 47, 0.14)",
+              fontSize: "1.125rem",
+              lineHeight: 1,
+              "&:hover": {
+                bgcolor: "background.paper",
+                borderColor: "#ffffff",
+              },
+            }}
+          >
+            {currentLanguage.flag}
+          </Button>
+          <Menu
+            id="language-menu"
+            anchorEl={languageAnchor}
+            open={Boolean(languageAnchor)}
+            onClose={() => setLanguageAnchor(null)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 1,
+                  borderRadius: 2,
+                  border: "1px solid rgba(62, 56, 47, 0.08)",
+                  boxShadow: "0 14px 34px rgba(62, 56, 47, 0.14)",
+                },
+              },
+            }}
+          >
+            {languages.map((language) => (
+              <MenuItem
+                key={language.code}
+                selected={language.code === currentLanguage.code}
+                onClick={() => handleLanguageChange(language.code)}
+                sx={{
+                  gap: 1.25,
+                  minWidth: 150,
+                  fontSize: "0.9375rem",
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "2px solid #ffffff",
+                    bgcolor: "rgba(255, 253, 248, 0.7)",
+                    boxShadow: "0 3px 10px rgba(62, 56, 47, 0.12)",
+                    fontSize: "1rem",
+                  }}
+                >
+                  {language.flag}
+                </Box>
+                {language.label}
+              </MenuItem>
+            ))}
+          </Menu>
         </Box>
       </Box>
     </Box>
