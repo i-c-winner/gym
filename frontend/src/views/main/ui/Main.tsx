@@ -4,7 +4,7 @@ import {Double} from "@/widgets/double/ui/Double";
 import {Haos} from "@/widgets/haos/ui/Haos";
 import {Galery} from "@/entities/galery/Galery";
 import {Orders} from "@/entities/orders/Orders";
-import {Header} from "@/entities/heders/api/Header";
+import {Header} from "@/entities/heders/ui/Header";
 
 const items=[
   {

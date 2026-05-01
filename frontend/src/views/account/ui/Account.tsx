@@ -85,11 +85,11 @@ function Account() {
   const router = useRouter();
   const { user, status, logout } = useAuth();
 
-  useEffect(() => {
-     if (status === "anonymous") {
-      router.replace("/");
-    }
-  }, [router, status]);
+  // useEffect(() => {
+  //    if (status === "anonymous") {
+  //     router.replace("/");
+  //   }
+  // }, [router, status]);
 
   const displayName = useMemo(() => {
     const parts = [user?.first_name, user?.last_name].filter(Boolean);

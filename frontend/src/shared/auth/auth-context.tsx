@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/ui/v1";
 const CSRF_STORAGE_KEY = "gym.csrfToken";
 const DEV_AUTH_ENABLED =
   process.env.NODE_ENV === "development" &&
