@@ -42,6 +42,7 @@ function Main() {
         flexDirection: "column",
         width: "100%",
         bgcolor: "background.default",
+        overflowX: "hidden",
       }}
     >
       <Header />
@@ -49,8 +50,12 @@ function Main() {
       <Box
         className="top-image"
         sx={{
-          position: "absolute",
           width: "100%",
+          maxWidth: "1280px",
+          mx: "auto",
+          mt: { xs: 2, sm: 2.5 },
+          borderRadius: { xs: 3, md: 4 },
+          overflow: "hidden",
           backgroundImage: "url('/images/top.jpeg')",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -64,8 +69,10 @@ function Main() {
         sx={{
           width: "100%",
           bgcolor: "background.default",
+          maxWidth: "1280px",
+          mx: "auto",
           px: { xs: 2, sm: 3, md: 5 },
-          py: { xs: 6, sm: 8, md: 10 },
+          py: { xs: 4, sm: 6, md: 8 },
         }}
       >
           <Triptich/>
