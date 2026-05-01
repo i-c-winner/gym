@@ -13,7 +13,7 @@ const languages = [
 ] as const;
 
 function Header() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(
     null,
   );
@@ -22,9 +22,9 @@ function Header() {
     languages[0];
 
   const items = [
-    { label: "Регистрация", href: "/" },
-    { label: "Главная", href: "/main" },
-    { label: "Кабинет", href: "/account" },
+    { label: t("header.registration"), href: "/" },
+    { label: t("header.main"), href: "/main" },
+    { label: t("header.account"), href: "/account" },
   ];
 
   const handleLanguageChange = (languageCode: (typeof languages)[number]["code"]) => {
@@ -112,7 +112,7 @@ function Header() {
           ))}
           <Button
             type="button"
-            aria-label="Выбрать язык"
+            aria-label={t("header.language")}
             aria-controls={languageAnchor ? "language-menu" : undefined}
             aria-haspopup="menu"
             aria-expanded={languageAnchor ? "true" : undefined}

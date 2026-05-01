@@ -1,18 +1,21 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { kk } from "./locales/kk";
+import { ru } from "./locales/ru";
+import { uz } from "./locales/uz";
 
 const defaultLanguage = "ru";
 const languageStorageKey = "app-language";
 
 const resources = {
   ru: {
-    translation: {},
+    translation: ru,
   },
   uz: {
-    translation: {},
+    translation: uz,
   },
   kk: {
-    translation: {},
+    translation: kk,
   },
 } as const;
 
