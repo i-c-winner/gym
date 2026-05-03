@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/ui/v1/:path*",
+        source: "/api/v1/:path*",
         destination: `${apiProxyTarget}/api/v1/:path*`,
       },
     ];
@@ -15,4 +15,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

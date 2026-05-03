@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/ui/v1";
+const API_PREFIX = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 const CSRF_STORAGE_KEY = "gym.csrfToken";
 const DEV_AUTH_ENABLED =
   process.env.NODE_ENV === "development" &&
@@ -256,11 +256,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [csrfToken]);
 
   useEffect(() => {
-    void checkAuth().catch(() => {
-      setUser(null);
-      setCsrfToken(null);
-      setStatus("anonymous");
-    });
+    let isMounted = true;
+
+    async function bootstrapAuth(): Promise<void> {
+      try {
+        await checkAuth();
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setUser(null);
+        setCsrfToken(null);
+        setStatus("anonymous");
+      }
+    }
+
+    void bootstrapAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, [checkAuth]);
 
   const value = useMemo<AuthContextValue>(

@@ -47,7 +47,13 @@ function Thumbnail({
           p: { xs: 2, md: 2.5 },
         }}
       >
-
+        {label ? (
+          <Typography className="thumbnail-meta">
+            {label}
+          </Typography>
+        ) : (
+          <Box />
+        )}
 
         <Box sx={{ maxWidth: "72%" }}>
           <Typography className="thumbnail-title">
@@ -77,8 +83,8 @@ function Thumbnail({
             <PlayArrowRoundedIcon sx={{ fontSize: 28, color: "#1f1c19", ml: "2px" }} />
           </Box>
 
-          <Typography className="thumbnail-meta">
-            {watchTime}
+          <Typography className="thumbnail-meta" sx={{ textAlign: "right" }}>
+            {watchTime} / {duration}
           </Typography>
         </Box>
       </Box>

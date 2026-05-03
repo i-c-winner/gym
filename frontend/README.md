@@ -24,11 +24,20 @@ npm run dev
 cp .env.local.example .env.local
 ```
 
-По умолчанию frontend проксирует `/api/v1/*` на `http://127.0.0.1:8000/api/v1/*`.
+По умолчанию frontend обращается к backend через same-origin путь `/api/v1/*`.
+Next.js проксирует этот путь на `http://127.0.0.1:8000/api/v1/*`, поэтому cookies сессии остаются на домене frontend.
 Если backend запущен на другом адресе, укажите:
 
 ```bash
 API_PROXY_TARGET=http://127.0.0.1:8001 npm run dev
+```
+
+Для локальной авторизации backend должен быть запущен с cookie-настройками:
+
+```env
+SECURE_COOKIES=false
+SAME_SITE=lax
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 ## Dev bypass авторизации
