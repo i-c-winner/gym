@@ -27,21 +27,46 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import { useAuth } from "@/shared/auth/auth-context";
+import { ProgramCards, type ProgramCardItem } from "@/widgets/programCards/ui/ProgramCards";
 
 const navigationItems = [
   { label: "Главная", icon: <HomeOutlinedIcon fontSize="small" />, href: "/main", active: true },
-  { label: "Программы", icon: <AppsOutlinedIcon fontSize="small" />, href: "/main" },
+  { label: "Программы", icon: <AppsOutlinedIcon fontSize="small" />, href: "/account/programs" },
   { label: "Уроки", icon: <OndemandVideoOutlinedIcon fontSize="small" />, href: "/main" },
   { label: "Тренировки", icon: <FitnessCenterOutlinedIcon fontSize="small" />, href: "/main" },
   { label: "Календарь", icon: <CalendarMonthOutlinedIcon fontSize="small" />, href: "/main" },
   { label: "Избранное", icon: <FavoriteBorderOutlinedIcon fontSize="small" />, href: "/main" },
 ];
 
-const programItems = [
-  { title: "Гибкость тела", lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
-  { title: "Сила и выносливость", lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png" },
-  { title: "Шпагат за 30 дней", lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png" },
-  { title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
+const programItems: ProgramCardItem[] = [
+  {
+    id: "flexibility",
+    title: "Гибкость тела",
+    lessons: "12 уроков",
+    image: "/images/assets_page-editor_1.1720702264.png",
+    href: "/account/myPrograms",
+  },
+  {
+    id: "strength",
+    title: "Сила и выносливость",
+    lessons: "10 уроков",
+    image: "/images/assets_page-editor_2.1720702297.png",
+    href: "/account/myPrograms",
+  },
+  {
+    id: "split",
+    title: "Шпагат за 30 дней",
+    lessons: "15 уроков",
+    image: "/images/assets_page-editor_3.1720616225.png",
+    href: "/account/myPrograms",
+  },
+  {
+    id: "rhythmic",
+    title: "Художественная гимнастика",
+    lessons: "11 уроков",
+    image: "/images/assets_page-editor_1.1720702264.png",
+    href: "/account/myPrograms",
+  },
 ];
 
 const recentItems = [
@@ -354,48 +379,11 @@ function Account() {
                       >
                         Мои программы
                       </Typography>
-                      <Button sx={{ color: "secondary.main" }}>Смотреть все</Button>
+                      <Button component={Link} href="/account/programs" sx={{ color: "secondary.main" }}>
+                        Смотреть все
+                      </Button>
                     </Stack>
-                    <Grid container spacing={2}>
-                      {programItems.map((item) => (
-                        <Grid key={item.title} size={{ xs: 12, sm: 6, xl: 3 }}>
-                          <CardShell>
-                            <Box>
-                              <Box
-                                sx={{
-                                  height: 150,
-                                  backgroundImage: `url('${item.image}')`,
-                                  backgroundPosition: "center",
-                                  backgroundRepeat: "no-repeat",
-                                  backgroundSize: "cover",
-                                  borderTopLeftRadius: 16,
-                                  borderTopRightRadius: 16,
-                                }}
-                              />
-                              <Stack direction="row" spacing={1.5} sx={{ p: 2, justifyContent: "space-between", alignItems: "center" }}>
-                                <Box sx={{ minWidth: 0 }}>
-                                  <Typography sx={{ fontSize: "1.125rem", fontWeight: 600, color: "text.primary" }}>
-                                    {item.title}
-                                  </Typography>
-                                  <Typography sx={{ mt: 0.5, color: "text.secondary" }}>
-                                    {item.lessons}
-                                  </Typography>
-                                </Box>
-                                <IconButton
-                                  sx={{
-                                    border: "1px solid rgba(184, 159, 116, 0.4)",
-                                    color: "secondary.main",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <ChevronRightRoundedIcon />
-                                </IconButton>
-                              </Stack>
-                            </Box>
-                          </CardShell>
-                        </Grid>
-                      ))}
-                    </Grid>
+                    <ProgramCards items={programItems} size="small" />
                   </Box>
 
                   <Box>
