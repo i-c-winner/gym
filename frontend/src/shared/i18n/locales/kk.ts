@@ -30,7 +30,6 @@ const kk = {
     },
     actions: {
       open: "Ашу",
-      noAccess: "Қолжетім жоқ",
     },
     access: {
       locked: "Қолжетім жоқ",

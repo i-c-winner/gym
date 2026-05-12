@@ -30,7 +30,6 @@ const uz = {
     },
     actions: {
       open: "Ochish",
-      noAccess: "Ruxsat yo'q",
     },
     access: {
       locked: "Ruxsat yo'q",

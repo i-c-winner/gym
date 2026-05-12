@@ -86,7 +86,7 @@ function buildProgramCard(
     progress: program.progress,
     accent: program.accent,
     hasAccess,
-    href: hasAccess ? "/account/myPrograms" : undefined,
+    href: hasAccess ? `/account/programs/${program.key}` : undefined,
   };
 }
 
@@ -332,10 +332,8 @@ function MyPrograms() {
               )}
               size="high"
               actionLabel={t("accountMyPrograms.actions.open")}
-              disabledActionLabel={t("accountMyPrograms.actions.noAccess")}
               durationLabel={t("accountMyPrograms.labels.duration")}
               lessonsLabel={t("accountMyPrograms.labels.lessons")}
-              lockedLabel={t("accountMyPrograms.access.locked")}
               progressLabel={t("accountMyPrograms.labels.progress")}
             />
           </Stack>

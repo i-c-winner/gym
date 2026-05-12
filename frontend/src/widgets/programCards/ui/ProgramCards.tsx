@@ -137,10 +137,9 @@ function ProgramCards({
                     filter: hasAccess ? "none" : "grayscale(1)",
                   }}
                 >
-                  {size !== "small" && (item.status || !hasAccess) ? (
+                  {size !== "small" && hasAccess && item.status ? (
                     <Chip
-                      icon={hasAccess ? undefined : <LockOutlinedIcon />}
-                      label={hasAccess ? item.status : lockedLabel}
+                      label={item.status}
                       sx={{
                         position: "absolute",
                         top: 14,

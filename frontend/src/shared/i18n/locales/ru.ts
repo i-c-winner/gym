@@ -30,7 +30,6 @@ const ru = {
     },
     actions: {
       open: "Открыть",
-      noAccess: "Нет доступа",
     },
     access: {
       locked: "Нет доступа",
