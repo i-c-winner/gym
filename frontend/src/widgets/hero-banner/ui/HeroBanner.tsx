@@ -41,19 +41,6 @@ function HeroBanner() {
           >
             Видеоуроки гимнастики для любого уровня подготовки
           </Typography>
-          <Button
-            sx={{
-              mt: 3,
-              px: 3.5,
-              py: 1.6,
-              borderRadius: 999,
-              bgcolor: "secondary.main",
-              color: "#fffdf8",
-              fontSize: "1rem",
-            }}
-          >
-            Продолжить тренировку
-          </Button>
         </Box>
       </Box>
     </CardShell>

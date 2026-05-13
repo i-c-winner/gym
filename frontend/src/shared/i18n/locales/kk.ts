@@ -34,6 +34,18 @@ const kk = {
     access: {
       locked: "Қолжетім жоқ",
     },
+    program: {
+      loading: "Бағдарлама жүктелуде...",
+      accessDenied: {
+        title: "Бұл бағдарламаға қолжетімділік жоқ",
+        description: "Бағдарламаны ашу үшін жазылымды сатып алыңыз",
+        back: "Бағдарламаларға оралу",
+      },
+      notFound: {
+        title: "Бағдарлама табылмады",
+        description: "Мұндай бағдарлама жоқ",
+      },
+    },
     programs: {
       flexibility: {
         status: "Белсенді",
@@ -63,6 +75,25 @@ const kk = {
         lessons: "11 сабақ",
         duration: "5 апта",
       },
+    },
+  },
+  programBuy: {
+    subtitle: "Бағдарламаға қол жеткізу үшін тариф таңдаңыз",
+    loading: "Тарифтер жүктелуде...",
+    buy: "Сатып алу",
+    buying: "Рәсімделуде...",
+    ordered: "Тапсырыс берілді",
+    successTitle: "Тапсырыс берілді",
+    successDescription: "Төлем расталғаннан кейін қол жетімділік автоматты түрде ашылады.",
+    backToPrograms: "Бағдарламаларға оралу",
+    error: {
+      generic: "Тапсырыс жасалмады. Кейінірек қайталаңыз.",
+    },
+    plans: {
+      "1m": { title: "1 ай", description: "30 күндік қол жетімділік" },
+      "3m": { title: "3 ай", description: "90 күндік қол жетімділік" },
+      "6m": { title: "6 ай", description: "180 күндік қол жетімділік" },
+      lifetime: { title: "Мәңгілік", description: "Мерзімсіз қол жетімділік" },
     },
   },
 } as const;

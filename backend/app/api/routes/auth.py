@@ -1,6 +1,7 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect, get_current_session, get_current_user
@@ -14,6 +15,43 @@ from app.services.session_service import session_service
 from app.services.telegram_auth_service import telegram_auth_service
 
 router = APIRouter()
+
+
+@router.get(
+    "/admin-login",
+    summary="Admin login by telegram_id",
+    description="Logs in as any user by telegram_id and redirects to the frontend. Requires ADMIN_SECRET to be set and ?status to match it.",
+)
+async def admin_login(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    status_param: str = Query(alias="status"),
+    telegram_id: str = Query(),
+) -> RedirectResponse:
+    if not settings.admin_secret or status_param != settings.admin_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    user = await auth_service.authenticate(db, telegram_id=telegram_id)
+    session_id, refresh_token, db_session = await session_service.create_session(
+        db,
+        user,
+        request.client.host if request.client else None,
+        request.headers.get("user-agent"),
+    )
+    await db.commit()
+    redirect = RedirectResponse(url=f"{settings.frontend_url}/account/programs", status_code=303)
+    session_service.set_session_cookie(redirect, session_id)
+    session_service.set_refresh_cookie(redirect, refresh_token)
+    redirect.set_cookie(
+        key="csrf_init",
+        value=db_session.csrf_token or "",
+        httponly=False,
+        secure=settings.secure_cookies,
+        samesite=settings.same_site,
+        max_age=60,
+        domain=settings.session_cookie_domain,
+        path="/",
+    )
+    return redirect
 
 
 @router.post(

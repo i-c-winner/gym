@@ -34,6 +34,18 @@ const uz = {
     access: {
       locked: "Ruxsat yo'q",
     },
+    program: {
+      loading: "Dastur yuklanmoqda...",
+      accessDenied: {
+        title: "Bu dasturga kirish imkoni yo'q",
+        description: "Dasturni ochish uchun obuna sotib oling",
+        back: "Dasturlarga qaytish",
+      },
+      notFound: {
+        title: "Dastur topilmadi",
+        description: "Bunday dastur mavjud emas",
+      },
+    },
     programs: {
       flexibility: {
         status: "Faol",
@@ -63,6 +75,25 @@ const uz = {
         lessons: "11 dars",
         duration: "5 hafta",
       },
+    },
+  },
+  programBuy: {
+    subtitle: "Dasturga kirish uchun tarifni tanlang",
+    loading: "Tariflar yuklanmoqda...",
+    buy: "Sotib olish",
+    buying: "Rasmiylashtirilmoqda...",
+    ordered: "Buyurtma berildi",
+    successTitle: "Buyurtma rasmiylashtirildi",
+    successDescription: "To'lov tasdiglanganidan keyin kirish avtomatik ravishda ochiladi.",
+    backToPrograms: "Dasturlarga qaytish",
+    error: {
+      generic: "Buyurtma yaratib bo'lmadi. Keyinroq urinib ko'ring.",
+    },
+    plans: {
+      "1m": { title: "1 oy", description: "30 kunlik kirish" },
+      "3m": { title: "3 oy", description: "90 kunlik kirish" },
+      "6m": { title: "6 oy", description: "180 kunlik kirish" },
+      lifetime: { title: "Abadiy", description: "Muddatsiz kirish" },
     },
   },
 } as const;

@@ -68,5 +68,7 @@ async def require_resource_access(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Resource:
+    if user.telegram_id and user.telegram_id in settings.admin_telegram_ids:
+        return resource
     await access_service.require_access(db, user.id, resource)
     return resource

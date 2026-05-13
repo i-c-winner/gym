@@ -4,3 +4,4 @@ export default async function ProgramPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   return <Program slug={slug} />;
 }
+

@@ -37,7 +37,7 @@ function buildProgramCard(
     progress: program.progress,
     accent: program.accent,
     hasAccess,
-    href: hasAccess ? `/account/programs/${program.key}` : undefined,
+    href: `/account/programs/${program.key}`,
   };
 }
 
@@ -76,7 +76,8 @@ function MyPrograms() {
   }
 
   return (
-    <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
+    <Box sx={{
+      minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
       <Grid container spacing={{ xs: 2, md: 3 }}>
         <Grid size={{ xs: 12, lg: 2.25 }}>
           <AccountSidebar

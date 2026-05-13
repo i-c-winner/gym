@@ -16,10 +16,10 @@ import { QuickActionsCard, type QuickActionItem } from "@/widgets/quick-actions/
 import { ProgramCards, type ProgramCardItem } from "@/widgets/programCards/ui/ProgramCards";
 
 const programItems: ProgramCardItem[] = [
-  { id: "flexibility", title: "Гибкость тела", lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/myPrograms" },
-  { id: "strength", title: "Сила и выносливость", lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png", href: "/account/myPrograms" },
-  { id: "split", title: "Шпагат за 30 дней", lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png", href: "/account/myPrograms" },
-  { id: "rhythmic", title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/myPrograms" },
+  { id: "flexibility", title: "Гибкость тела", lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/programs/flexibility" },
+  { id: "strength", title: "Сила и выносливость", lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png", href: "/account/programs/strength" },
+  { id: "split", title: "Шпагат за 30 дней", lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png", href: "/account/programs/split" },
+  { id: "rhythmic", title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/programs/rhythmic" },
 ];
 
 const recentItems: RecentLessonItem[] = [

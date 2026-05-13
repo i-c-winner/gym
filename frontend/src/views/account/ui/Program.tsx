@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Box, Grid, Stack } from "@mui/material";
+import { Box, Button, Grid, Stack, Typography } from "@mui/material";
+import { getResourceContent } from "@/shared/api/resources";
+import type { ApiError } from "@/shared/api/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
@@ -43,6 +46,8 @@ function getLessons(slug: string): LessonItem[] {
   }));
 }
 
+type AccessState = "loading" | "granted" | "not_found";
+
 function Program({ slug }: { slug: string }) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -52,11 +57,94 @@ function Program({ slug }: { slug: string }) {
     fallbackPlan: t("accountMyPrograms.profile.fallbackPlan"),
   });
   const navItems = useAccountNavItems("/account/programs");
+  const [accessState, setAccessState] = useState<AccessState>("loading");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAccess(): Promise<void> {
+      try {
+        await getResourceContent(slug);
+        if (isMounted) setAccessState("granted");
+      } catch (error) {
+        if (!isMounted) return;
+        const apiError = error as ApiError;
+        if (apiError.status === 401) {
+          router.replace("/");
+          return;
+        }
+        if (apiError.status === 403) {
+          router.replace(`/account/programs/${slug}/buy`);
+          return;
+        }
+        setAccessState("not_found");
+      }
+    }
+
+    void checkAccess();
+    return () => {
+      isMounted = false;
+    };
+  }, [slug, router]);
 
   const image = programImages[slug] ?? "/images/assets_page-editor_1.1720702264.png";
   const accent = programAccents[slug] ?? "#b98173";
   const progress = programProgress[slug] ?? 0;
   const lessons = getLessons(slug);
+
+  const renderContent = () => {
+    if (accessState === "loading") {
+      return (
+        <Box sx={{ display: "grid", placeItems: "center", minHeight: 240 }}>
+          <Typography sx={{ fontSize: "1.125rem", color: "text.secondary" }}>
+            {t("accountMyPrograms.program.loading")}
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (accessState === "not_found") {
+      return (
+        <Box sx={{ display: "grid", placeItems: "center", minHeight: 320, textAlign: "center", px: 2 }}>
+          <Stack spacing={2} sx={{ alignItems: "center" }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {t("accountMyPrograms.program.notFound.title")}
+            </Typography>
+            <Typography sx={{ color: "text.secondary", maxWidth: 360 }}>
+              {t("accountMyPrograms.program.notFound.description")}
+            </Typography>
+            <Button variant="outlined" onClick={() => router.push("/account/programs")} sx={{ mt: 1 }}>
+              {t("accountMyPrograms.program.accessDenied.back")}
+            </Button>
+          </Stack>
+        </Box>
+      );
+    }
+
+    return (
+      <Stack spacing={{ xs: 2, md: 3 }}>
+        <AccountPageHeader
+          title={t(`accountMyPrograms.programs.${slug}.title`)}
+          subtitle={t(`accountMyPrograms.programs.${slug}.description`)}
+          displayName={displayName}
+          profileSubtitle={profileSubtitle}
+          backHref="/account/programs"
+        />
+        <ProgramHero
+          image={image}
+          accent={accent}
+          progress={progress}
+          status={t(`accountMyPrograms.programs.${slug}.status`)}
+          lessonsLabel={t("accountMyPrograms.labels.lessons")}
+          durationLabel={t("accountMyPrograms.labels.duration")}
+          progressLabel={t("accountMyPrograms.labels.progress")}
+          lessonsValue={t(`accountMyPrograms.programs.${slug}.lessons`)}
+          durationValue={t(`accountMyPrograms.programs.${slug}.duration`)}
+        />
+        <LessonsList lessons={lessons} accent={accent} />
+      </Stack>
+    );
+  };
 
   return (
     <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
@@ -71,27 +159,7 @@ function Program({ slug }: { slug: string }) {
         </Grid>
 
         <Grid size={{ xs: 12, lg: 9.75 }}>
-          <Stack spacing={{ xs: 2, md: 3 }}>
-            <AccountPageHeader
-              title={t(`accountMyPrograms.programs.${slug}.title`)}
-              subtitle={t(`accountMyPrograms.programs.${slug}.description`)}
-              displayName={displayName}
-              profileSubtitle={profileSubtitle}
-              backHref="/account/programs"
-            />
-            <ProgramHero
-              image={image}
-              accent={accent}
-              progress={progress}
-              status={t(`accountMyPrograms.programs.${slug}.status`)}
-              lessonsLabel={t("accountMyPrograms.labels.lessons")}
-              durationLabel={t("accountMyPrograms.labels.duration")}
-              progressLabel={t("accountMyPrograms.labels.progress")}
-              lessonsValue={t(`accountMyPrograms.programs.${slug}.lessons`)}
-              durationValue={t(`accountMyPrograms.programs.${slug}.duration`)}
-            />
-            <LessonsList lessons={lessons} accent={accent} />
-          </Stack>
+          {renderContent()}
         </Grid>
       </Grid>
     </Box>

@@ -34,6 +34,18 @@ const ru = {
     access: {
       locked: "Нет доступа",
     },
+    program: {
+      loading: "Загружаем программу...",
+      accessDenied: {
+        title: "Нет доступа к этой программе",
+        description: "Приобретите подписку, чтобы открыть программу",
+        back: "Вернуться к программам",
+      },
+      notFound: {
+        title: "Программа не найдена",
+        description: "Такой программы не существует",
+      },
+    },
     programs: {
       flexibility: {
         status: "Активна",
@@ -63,6 +75,25 @@ const ru = {
         lessons: "11 уроков",
         duration: "5 недель",
       },
+    },
+  },
+  programBuy: {
+    subtitle: "Выберите тариф для доступа к программе",
+    loading: "Загружаем тарифы...",
+    buy: "Купить",
+    buying: "Оформляем...",
+    ordered: "Заказ создан",
+    successTitle: "Заказ оформлен",
+    successDescription: "Ожидайте подтверждения оплаты. После её поступления доступ откроется автоматически.",
+    backToPrograms: "Вернуться к программам",
+    error: {
+      generic: "Не удалось создать заказ. Попробуйте позже.",
+    },
+    plans: {
+      "1m": { title: "1 месяц", description: "Доступ на 30 дней" },
+      "3m": { title: "3 месяца", description: "Доступ на 90 дней" },
+      "6m": { title: "6 месяцев", description: "Доступ на 180 дней" },
+      lifetime: { title: "Навсегда", description: "Бессрочный доступ" },
     },
   },
 } as const;
