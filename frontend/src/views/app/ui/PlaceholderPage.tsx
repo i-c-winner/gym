@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/shared/auth/auth-context";
-import type { TelegramUser } from "@/shared/auth/auth-context";
+import { useAuth } from "@/features/auth/model/auth-context";
+import type { TelegramUser } from "@/features/auth/model/auth-context";
 
 const devAuthEnabled =
   process.env.NODE_ENV === "development" &&

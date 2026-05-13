@@ -14,12 +14,9 @@ const languages = [
 
 function Header() {
   const { i18n, t } = useTranslation();
-  const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(
-    null,
-  );
+  const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null);
   const currentLanguage =
-    languages.find((language) => language.code === i18n.language) ??
-    languages[0];
+    languages.find((language) => language.code === i18n.language) ?? languages[0];
 
   const items = [
     { label: t("header.registration"), href: "/" },
@@ -160,11 +157,7 @@ function Header() {
                 key={language.code}
                 selected={language.code === currentLanguage.code}
                 onClick={() => handleLanguageChange(language.code)}
-                sx={{
-                  gap: 1.25,
-                  minWidth: 150,
-                  fontSize: "0.9375rem",
-                }}
+                sx={{ gap: 1.25, minWidth: 150, fontSize: "0.9375rem" }}
               >
                 <Box
                   component="span"

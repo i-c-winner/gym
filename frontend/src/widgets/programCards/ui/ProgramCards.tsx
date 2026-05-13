@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { CardShell } from "@/shared/ui/CardShell";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -80,21 +81,6 @@ const sizeConfig: Record<
     showDetails: true,
   },
 };
-
-function CardShell({ children }: { children: React.ReactNode }) {
-  return (
-    <Box
-      sx={{
-        borderRadius: 4,
-        bgcolor: "rgba(255, 253, 248, 0.88)",
-        border: "1px solid rgba(62, 56, 47, 0.08)",
-        boxShadow: "0 16px 40px rgba(62, 56, 47, 0.08)",
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
 
 function ProgramCards({
   items,

@@ -2,9 +2,9 @@ import {Box} from "@mui/system";
 import {Triptich} from "@/widgets/triptych/ui/Triptich";
 import {Double} from "@/widgets/double/ui/Double";
 import {Haos} from "@/widgets/haos/ui/Haos";
-import {Galery} from "@/entities/galery/Galery";
+import { Gallery } from "@/entities/gallery/Gallery";
 import {Orders} from "@/entities/orders/Orders";
-import {Header} from "@/entities/heders/ui/Header";
+import { Header } from "@/entities/headers/ui/Header";
 
 const items=[
   {
@@ -78,7 +78,7 @@ function Main() {
           <Triptich/>
           <Haos />
           <Double />
-        <Galery items={items} />
+        <Gallery items={items} />
         <Orders/>
       </Box>
     </Box>

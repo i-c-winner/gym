@@ -14,7 +14,7 @@ type GalleryItem = {
   label?: string;
 };
 
-type GaleryProps = {
+type GalleryProps = {
   items: GalleryItem[];
   thumbnailWidth?: number | string;
   thumbnailHeight?: number | string;
@@ -22,43 +22,29 @@ type GaleryProps = {
 
 const PREVIEW_IMAGE = "/images/thumbiline.jpeg";
 
-function Galery({
+function Gallery({
   items,
   thumbnailWidth = 380,
   thumbnailHeight = 230,
-}: GaleryProps) {
+}: GalleryProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const scrollToIndex = (index: number) => {
     const container = scrollRef.current;
-    if (!container) {
-      return;
-    }
+    if (!container) return;
 
     const safeIndex = Math.max(0, Math.min(index, items.length - 1));
     const child = container.children.item(safeIndex) as HTMLElement | null;
 
-    if (!child) {
-      return;
-    }
+    if (!child) return;
 
-    child.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-
+    child.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     setActiveIndex(safeIndex);
   };
 
-  const handlePrev = () => {
-    scrollToIndex(activeIndex - 1);
-  };
-
-  const handleNext = () => {
-    scrollToIndex(activeIndex + 1);
-  };
+  const handlePrev = () => scrollToIndex(activeIndex - 1);
+  const handleNext = () => scrollToIndex(activeIndex + 1);
 
   return (
     <Box
@@ -86,9 +72,7 @@ function Galery({
           border: "1px solid rgba(93, 86, 77, 0.28)",
           bgcolor: "background.paper",
           color: "#5a5147",
-          "&:hover": {
-            bgcolor: "background.paper",
-          },
+          "&:hover": { bgcolor: "background.paper" },
         }}
       >
         <ChevronLeftRoundedIcon />
@@ -110,9 +94,7 @@ function Galery({
           border: "1px solid rgba(93, 86, 77, 0.28)",
           bgcolor: "background.paper",
           color: "#5a5147",
-          "&:hover": {
-            bgcolor: "background.paper",
-          },
+          "&:hover": { bgcolor: "background.paper" },
         }}
       >
         <ChevronRightRoundedIcon />
@@ -127,9 +109,7 @@ function Galery({
           scrollSnapType: "x mandatory",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
-          "&::-webkit-scrollbar": {
-            display: "none",
-          },
+          "&::-webkit-scrollbar": { display: "none" },
         }}
       >
         {items.map((item, index) => (
@@ -157,18 +137,9 @@ function Galery({
         ))}
       </Box>
 
-      <Box
-        sx={{
-          mt: 2.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 1,
-        }}
-      >
+      <Box sx={{ mt: 2.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
         {items.map((item, index) => {
           const isActive = index === activeIndex;
-
           return (
             <Box
               key={`${item.title}-dot-${index}`}
@@ -190,12 +161,7 @@ function Galery({
         })}
       </Box>
 
-      <Box
-        sx={{
-          mt: 1.5,
-          display: { xs: "block", sm: "none" },
-        }}
-      >
+      <Box sx={{ mt: 1.5, display: { xs: "block", sm: "none" } }}>
         <Typography className="gallery-hint">
           Листайте влево и вправо, чтобы посмотреть все превью.
         </Typography>
@@ -204,5 +170,5 @@ function Galery({
   );
 }
 
-export { Galery };
-export type { GalleryItem, GaleryProps };
+export { Gallery };
+export type { GalleryItem, GalleryProps };
