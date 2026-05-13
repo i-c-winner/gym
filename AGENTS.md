@@ -66,6 +66,8 @@
 
 ## Frontend-Ожидания
 
+- Используй декомпозицию при создании компонентов
+- Огранчь размер одного файла кода в 500 строк
 - Весь frontend-код должен размещаться в `frontend/`.
 - Frontend следует строить на `Next.js + React + TypeScript`.
 - Архитектурно придерживайся `FSD`: `app`, `pages`, `widgets`, `features`, `entities`, `shared`.
