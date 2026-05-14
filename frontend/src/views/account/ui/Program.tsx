@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Box, Button, Grid, Stack, Typography } from "@mui/material";
-import { getResourceContent } from "@/shared/api/resources";
+import { getResourceContent, getResourceBySlug, type Resource } from "@/shared/api/resources";
 import type { ApiError } from "@/shared/api/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
@@ -58,14 +58,21 @@ function Program({ slug }: { slug: string }) {
   });
   const navItems = useAccountNavItems("/account/programs");
   const [accessState, setAccessState] = useState<AccessState>("loading");
+  const [resource, setResource] = useState<Resource | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     async function checkAccess(): Promise<void> {
       try {
-        await getResourceContent(slug);
-        if (isMounted) setAccessState("granted");
+        const [, resourceData] = await Promise.all([
+          getResourceContent(slug),
+          getResourceBySlug(slug),
+        ]);
+        if (isMounted) {
+          setResource(resourceData);
+          setAccessState("granted");
+        }
       } catch (error) {
         if (!isMounted) return;
         const apiError = error as ApiError;
@@ -124,8 +131,8 @@ function Program({ slug }: { slug: string }) {
     return (
       <Stack spacing={{ xs: 2, md: 3 }}>
         <AccountPageHeader
-          title={t(`accountMyPrograms.programs.${slug}.title`)}
-          subtitle={t(`accountMyPrograms.programs.${slug}.description`)}
+          title={resource?.title ?? slug}
+          subtitle={resource?.description ?? ""}
           displayName={displayName}
           profileSubtitle={profileSubtitle}
           backHref="/account/programs"
@@ -134,12 +141,12 @@ function Program({ slug }: { slug: string }) {
           image={image}
           accent={accent}
           progress={progress}
-          status={t(`accountMyPrograms.programs.${slug}.status`)}
+          status={t(`accountMyPrograms.programs.${slug}.status`, { defaultValue: "" })}
           lessonsLabel={t("accountMyPrograms.labels.lessons")}
           durationLabel={t("accountMyPrograms.labels.duration")}
           progressLabel={t("accountMyPrograms.labels.progress")}
-          lessonsValue={t(`accountMyPrograms.programs.${slug}.lessons`)}
-          durationValue={t(`accountMyPrograms.programs.${slug}.duration`)}
+          lessonsValue={t(`accountMyPrograms.programs.${slug}.lessons`, { defaultValue: "" })}
+          durationValue={t(`accountMyPrograms.programs.${slug}.duration`, { defaultValue: "" })}
         />
         <LessonsList lessons={lessons} accent={accent} />
       </Stack>

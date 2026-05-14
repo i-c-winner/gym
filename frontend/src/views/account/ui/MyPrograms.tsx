@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Box, Grid, Stack, Typography } from "@mui/material";
 import { getMyAccesses } from "@/shared/api/accesses";
-import { getResources } from "@/shared/api/resources";
+import { getResources, type Resource } from "@/shared/api/resources";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
@@ -13,12 +13,26 @@ import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
 import { AccountPageHeader } from "@/widgets/account-layout/ui/AccountPageHeader";
 import { ProgramCards, type ProgramCardItem } from "@/widgets/programCards/ui/ProgramCards";
 
-const allPrograms = [
-  { key: "flexibility", image: "/images/assets_page-editor_1.1720702264.png", progress: 66, accent: "#b98173" },
-  { key: "strength",   image: "/images/assets_page-editor_2.1720702297.png", progress: 42, accent: "#6a7b6a" },
-  { key: "split",      image: "/images/assets_page-editor_3.1720616225.png", progress: 28, accent: "#b89f74" },
-  { key: "rhythmic",   image: "/images/top.jpeg",                            progress: 74, accent: "#8f6f5f" },
-];
+const programImages: Record<string, string> = {
+  flexibility: "/images/assets_page-editor_1.1720702264.png",
+  strength: "/images/assets_page-editor_2.1720702297.png",
+  split: "/images/assets_page-editor_3.1720616225.png",
+  rhythmic: "/images/top.jpeg",
+};
+
+const programAccents: Record<string, string> = {
+  flexibility: "#b98173",
+  strength: "#6a7b6a",
+  split: "#b89f74",
+  rhythmic: "#8f6f5f",
+};
+
+const programProgress: Record<string, number> = {
+  flexibility: 66,
+  strength: 42,
+  split: 28,
+  rhythmic: 74,
+};
 
 function MyPrograms() {
   const router = useRouter();
@@ -29,7 +43,7 @@ function MyPrograms() {
     fallbackPlan: t("accountMyPrograms.profile.fallbackPlan"),
   });
   const navItems = useAccountNavItems("/account/programs");
-  const [accessibleSlugs, setAccessibleSlugs] = useState<Set<string> | null>(null);
+  const [accessibleResources, setAccessibleResources] = useState<Resource[] | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,36 +52,26 @@ function MyPrograms() {
         const [accesses, resources] = await Promise.all([getMyAccesses(), getResources()]);
         if (!isMounted) return;
         const accessibleIds = new Set(accesses.map((a) => a.resource_id));
-        const slugs = new Set(
-          resources.filter((r) => accessibleIds.has(r.id)).map((r) => r.slug)
-        );
-        setAccessibleSlugs(slugs);
+        setAccessibleResources(resources.filter((r) => accessibleIds.has(r.id)));
       } catch {
-        if (isMounted) setAccessibleSlugs(new Set());
+        if (isMounted) setAccessibleResources([]);
       }
     }
     void loadAccesses();
     return () => { isMounted = false; };
   }, []);
 
-  const visiblePrograms = accessibleSlugs
-    ? allPrograms.filter((p) => accessibleSlugs.has(p.key))
-    : [];
-
-  const cards: ProgramCardItem[] = visiblePrograms.map((program) => ({
-    id: program.key,
-    title: t(`accountMyPrograms.programs.${program.key}.title`),
-    description: t(`accountMyPrograms.programs.${program.key}.description`),
-    lessons: t(`accountMyPrograms.programs.${program.key}.lessons`),
-    duration: t(`accountMyPrograms.programs.${program.key}.duration`),
-    status: t(`accountMyPrograms.programs.${program.key}.status`),
-    image: program.image,
-    progress: program.progress,
-    accent: program.accent,
-    href: `/account/programs/${program.key}`,
+  const cards: ProgramCardItem[] = (accessibleResources ?? []).map((resource) => ({
+    id: resource.slug,
+    title: resource.title,
+    description: resource.description ?? undefined,
+    image: programImages[resource.slug] ?? "/images/top.jpeg",
+    progress: programProgress[resource.slug] ?? 0,
+    accent: programAccents[resource.slug] ?? "#b98173",
+    href: `/account/programs/${resource.slug}`,
   }));
 
-  if (status === "loading" || accessibleSlugs === null) {
+  if (status === "loading" || accessibleResources === null) {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", px: 2 }}>
         <Typography sx={{ fontSize: "1.125rem", color: "text.secondary" }}>
