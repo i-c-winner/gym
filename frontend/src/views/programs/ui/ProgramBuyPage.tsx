@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import { getResourceBySlug, type Resource } from "@/shared/api/resources";
+import { getResourceBySlug, getResourceContent, type Resource } from "@/shared/api/resources";
 import { getPlansByResourceSlug, type Plan } from "@/shared/api/plans";
 import { createOrder } from "@/shared/api/orders";
 import { simulatePayment, type Provider } from "@/shared/api/payments";
@@ -287,7 +287,13 @@ function ProgramBuyPage({ slug }: { slug: string }) {
                   variant="contained"
                   size="large"
                   fullWidth
-                  onClick={() => router.push(`/account/programs/${slug}`)}
+                  onClick={async () => {
+                    try {
+                      await getResourceContent(slug);
+                    } catch {
+                      router.push(`/account/programs/${slug}`);
+                    }
+                  }}
                   sx={{
                     mt: 1,
                     borderRadius: 999,

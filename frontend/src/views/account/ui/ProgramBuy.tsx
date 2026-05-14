@@ -96,7 +96,7 @@ function ProgramBuy({ slug }: { slug: string }) {
               subtitle={t("programBuy.subtitle")}
               displayName={displayName}
               profileSubtitle={profileSubtitle}
-              backHref="/account/programs"
+              backHref="/programs/flexibility"
             />
 
             <Box
