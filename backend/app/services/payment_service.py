@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.security import verify_webhook_signature
 from app.models.access_grant import AccessGrant
@@ -96,7 +97,9 @@ class PaymentService:
         if event.status == PaymentEventStatus.PROCESSED:
             return event
 
-        order = await db.get(Order, order_id)
+        order = await db.scalar(
+            select(Order).options(selectinload(Order.plan)).where(Order.id == order_id)
+        )
         if not order:
             event.status = PaymentEventStatus.FAILED
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")

@@ -3,7 +3,9 @@ import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import csrf_protect, get_current_user
 from app.core.config import settings
@@ -25,7 +27,11 @@ class SimulatePaymentRequest(BaseModel):
 async def _delayed_grant(order_id: str) -> None:
     await asyncio.sleep(5)
     async with AsyncSessionLocal() as db:
-        order = await db.get(Order, order_id)
+        order = await db.scalar(
+            select(Order)
+            .options(selectinload(Order.plan))
+            .where(Order.id == order_id)
+        )
         if order and order.status == OrderStatus.PENDING:
             await payment_service.mark_order_paid_and_grant_access(db, order)
             await db.commit()
