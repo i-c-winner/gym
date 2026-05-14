@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Box, Button, Grid, Stack, Typography } from "@mui/material";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { getMyAccesses } from "@/shared/api/accesses";
-import { getResources } from "@/shared/api/resources";
+import { getResources, type Resource } from "@/shared/api/resources";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
 import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
@@ -18,12 +18,12 @@ import { ContinueLessonCard } from "@/widgets/account-progress/ui/ContinueLesson
 import { QuickActionsCard, type QuickActionItem } from "@/widgets/quick-actions/ui/QuickActionsCard";
 import { ProgramCards, type ProgramCardItem } from "@/widgets/programCards/ui/ProgramCards";
 
-const allProgramItems = [
-  { id: "flexibility", title: "Гибкость тела",            lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
-  { id: "strength",   title: "Сила и выносливость",       lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png" },
-  { id: "split",      title: "Шпагат за 30 дней",         lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png" },
-  { id: "rhythmic",   title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
-];
+const programImages: Record<string, string> = {
+  flexibility: "/images/assets_page-editor_1.1720702264.png",
+  strength: "/images/assets_page-editor_2.1720702297.png",
+  split: "/images/assets_page-editor_3.1720616225.png",
+  rhythmic: "/images/top.jpeg",
+};
 
 const recentItems: RecentLessonItem[] = [
   { title: "Растяжка на всё тело", subtitle: "Урок 7 из 12", duration: "24:15", progress: 66, image: "/images/assets_page-editor_1.1720702264.png" },
@@ -52,7 +52,7 @@ function Account() {
   const { user, status, logout } = useAuth();
   const { displayName, profileSubtitle } = useUserDisplay();
   const navItems = useAccountNavItems("/main");
-  const [accessibleSlugs, setAccessibleSlugs] = useState<Set<string>>(new Set());
+  const [accessibleResources, setAccessibleResources] = useState<Resource[]>([]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -62,18 +62,21 @@ function Account() {
         const [accesses, resources] = await Promise.all([getMyAccesses(), getResources()]);
         if (!isMounted) return;
         const accessibleIds = new Set(accesses.map((a) => a.resource_id));
-        setAccessibleSlugs(new Set(resources.filter((r) => accessibleIds.has(r.id)).map((r) => r.slug)));
+        setAccessibleResources(resources.filter((r) => accessibleIds.has(r.id)));
       } catch {
-        // silently ignore — hrefs will default to public page
+        // silently ignore
       }
     }
     void loadAccesses();
     return () => { isMounted = false; };
   }, [status]);
 
-  const programItems: ProgramCardItem[] = allProgramItems
-    .filter((p) => accessibleSlugs.has(p.id))
-    .map((p) => ({ ...p, href: `/account/programs/${p.id}` }));
+  const programItems: ProgramCardItem[] = accessibleResources.map((r) => ({
+    id: r.slug,
+    title: r.title,
+    image: programImages[r.slug] ?? "/images/top.jpeg",
+    href: `/account/programs/${r.slug}`,
+  }));
 
   if (status === "loading") {
     return (
