@@ -28,6 +28,7 @@ const uz = {
     successDesc: "Dasturga kirish ochildi.",
     openProgram: "Dasturga o'tish",
     error: { generic: "Buyurtma yaratib bo'lmadi. Keyinroq urinib ko'ring." },
+    errorModal: { title: "To'lov xatosi", close: "Yopish" },
   },
   accountMyPrograms: {
     loading: "Dasturlar yuklanmoqda...",

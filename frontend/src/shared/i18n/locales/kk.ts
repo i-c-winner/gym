@@ -28,6 +28,7 @@ const kk = {
     successDesc: "Бағдарламаға қол жетімділік ашылды.",
     openProgram: "Бағдарламаға өту",
     error: { generic: "Тапсырыс жасалмады. Кейінірек қайталаңыз." },
+    errorModal: { title: "Төлем қатесі", close: "Жабу" },
   },
   accountMyPrograms: {
     loading: "Бағдарламалар жүктелуде...",

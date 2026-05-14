@@ -28,6 +28,7 @@ const ru = {
     successDesc: "Доступ к программе открыт. Можно приступать.",
     openProgram: "Перейти к программе",
     error: { generic: "Не удалось создать заказ. Попробуйте позже." },
+    errorModal: { title: "Ошибка оплаты", close: "Закрыть" },
   },
   accountMyPrograms: {
     loading: "Загружаем программы...",

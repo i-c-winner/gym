@@ -7,6 +7,10 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Stack,
   Typography,
@@ -52,6 +56,7 @@ function ProgramBuyPage({ slug }: { slug: string }) {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<Provider | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const accent = programAccents[slug] ?? "#b98173";
@@ -290,8 +295,13 @@ function ProgramBuyPage({ slug }: { slug: string }) {
                   onClick={async () => {
                     try {
                       await getResourceContent(slug);
-                    } catch {
+                      if (plan && csrfToken) {
+                        const order = await createOrder(plan.resource_id, plan.id, csrfToken);
+                        await simulatePayment(order.id, provider ?? "click", csrfToken);
+                      }
                       router.push(`/account/programs/${slug}`);
+                    } catch (err) {
+                      setModalError((err as ApiError).message ?? t("programBuyPage.error.generic"));
                     }
                   }}
                   sx={{
@@ -310,6 +320,24 @@ function ProgramBuyPage({ slug }: { slug: string }) {
           </Box>
         </CardShell>
       </Box>
+
+      <Dialog open={!!modalError} onClose={() => setModalError(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {t("programBuyPage.errorModal.title")}
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "text.secondary" }}>{modalError}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            variant="contained"
+            onClick={() => setModalError(null)}
+            sx={{ borderRadius: 999, bgcolor: accent, "&:hover": { bgcolor: accent, filter: "brightness(0.92)" } }}
+          >
+            {t("programBuyPage.errorModal.close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
