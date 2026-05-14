@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Button, Grid, Stack, Typography } from "@mui/material";
 import { useAuth } from "@/features/auth/model/auth-context";
+import { getMyAccesses } from "@/shared/api/accesses";
+import { getResources } from "@/shared/api/resources";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
 import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
@@ -15,11 +18,11 @@ import { ContinueLessonCard } from "@/widgets/account-progress/ui/ContinueLesson
 import { QuickActionsCard, type QuickActionItem } from "@/widgets/quick-actions/ui/QuickActionsCard";
 import { ProgramCards, type ProgramCardItem } from "@/widgets/programCards/ui/ProgramCards";
 
-const programItems: ProgramCardItem[] = [
-  { id: "flexibility", title: "Гибкость тела", lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/programs/flexibility" },
-  { id: "strength", title: "Сила и выносливость", lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png", href: "/account/programs/strength" },
-  { id: "split", title: "Шпагат за 30 дней", lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png", href: "/account/programs/split" },
-  { id: "rhythmic", title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png", href: "/account/programs/rhythmic" },
+const allProgramItems = [
+  { id: "flexibility", title: "Гибкость тела",            lessons: "12 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
+  { id: "strength",   title: "Сила и выносливость",       lessons: "10 уроков", image: "/images/assets_page-editor_2.1720702297.png" },
+  { id: "split",      title: "Шпагат за 30 дней",         lessons: "15 уроков", image: "/images/assets_page-editor_3.1720616225.png" },
+  { id: "rhythmic",   title: "Художественная гимнастика", lessons: "11 уроков", image: "/images/assets_page-editor_1.1720702264.png" },
 ];
 
 const recentItems: RecentLessonItem[] = [
@@ -49,6 +52,28 @@ function Account() {
   const { user, status, logout } = useAuth();
   const { displayName, profileSubtitle } = useUserDisplay();
   const navItems = useAccountNavItems("/main");
+  const [accessibleSlugs, setAccessibleSlugs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let isMounted = true;
+    async function loadAccesses(): Promise<void> {
+      try {
+        const [accesses, resources] = await Promise.all([getMyAccesses(), getResources()]);
+        if (!isMounted) return;
+        const accessibleIds = new Set(accesses.map((a) => a.resource_id));
+        setAccessibleSlugs(new Set(resources.filter((r) => accessibleIds.has(r.id)).map((r) => r.slug)));
+      } catch {
+        // silently ignore — hrefs will default to public page
+      }
+    }
+    void loadAccesses();
+    return () => { isMounted = false; };
+  }, [status]);
+
+  const programItems: ProgramCardItem[] = allProgramItems
+    .filter((p) => accessibleSlugs.has(p.id))
+    .map((p) => ({ ...p, href: `/account/programs/${p.id}` }));
 
   if (status === "loading") {
     return (
@@ -105,27 +130,35 @@ function Account() {
                     <ProgramCards items={programItems} size="small" />
                   </Box>
 
-                  <RecentLessonsList items={recentItems} />
+                  <Box sx={{ opacity: 0.45, filter: "grayscale(0.6)", cursor: "pointer" }}>
+                    <RecentLessonsList items={recentItems} />
+                  </Box>
                 </Stack>
               </Grid>
 
               <Grid size={{ xs: 12, xl: 4 }}>
                 <Stack spacing={{ xs: 2, md: 3 }}>
-                  <ProgressCard
-                    percentage={68}
-                    completedCount={17}
-                    totalCount={25}
-                    totalTime="5 ч 20 мин"
-                    weekDays={weekDays}
-                  />
-                  <ContinueLessonCard
-                    title="Гибкость спины"
-                    subtitle="Урок 5 из 10"
-                    duration="18:30"
-                    progress={48}
-                    image="/images/assets_page-editor_2.1720702297.png"
-                  />
-                  <QuickActionsCard items={actionItems} />
+                  <Box sx={{ opacity: 0.45, filter: "grayscale(0.6)", cursor: "pointer" }}>
+                    <ProgressCard
+                      percentage={68}
+                      completedCount={17}
+                      totalCount={25}
+                      totalTime="5 ч 20 мин"
+                      weekDays={weekDays}
+                    />
+                  </Box>
+                  <Box sx={{ opacity: 0.45, filter: "grayscale(0.6)", cursor: "pointer" }}>
+                    <ContinueLessonCard
+                      title="Гибкость спины"
+                      subtitle="Урок 5 из 10"
+                      duration="18:30"
+                      progress={48}
+                      image="/images/assets_page-editor_2.1720702297.png"
+                    />
+                  </Box>
+                  <Box sx={{ opacity: 0.45, filter: "grayscale(0.6)", cursor: "pointer" }}>
+                    <QuickActionsCard items={actionItems} />
+                  </Box>
                 </Stack>
               </Grid>
             </Grid>

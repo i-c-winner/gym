@@ -74,7 +74,7 @@ function Program({ slug }: { slug: string }) {
           return;
         }
         if (apiError.status === 403) {
-          router.replace(`/account/programs/${slug}/buy`);
+          router.replace(`/programs/${slug}`);
           return;
         }
         setAccessState("not_found");

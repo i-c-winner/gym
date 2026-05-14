@@ -22,7 +22,10 @@ class Plan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     resource_id: Mapped[str] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    duration_type: Mapped[PlanDuration] = mapped_column(Enum(PlanDuration, name="plan_duration"), nullable=False)
+    duration_type: Mapped[PlanDuration] = mapped_column(
+        Enum(PlanDuration, name="plan_duration", values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     duration_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), default="USD", nullable=False)

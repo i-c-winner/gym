@@ -1,10 +1,14 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect, get_current_user
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.access_grant import AccessGrant
+from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.access import AccessGrantRead
 from app.schemas.user import UserRead, UserUpdateRequest
@@ -38,5 +42,20 @@ async def update_me(
 
 @router.get("/me/accesses", response_model=list[AccessGrantRead])
 async def my_accesses(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> list[AccessGrantRead]:
+    if user.telegram_id and user.telegram_id in settings.admin_telegram_ids:
+        now = datetime.now(UTC)
+        resources = (await db.scalars(select(Resource).where(Resource.is_active.is_(True)))).all()
+        return [
+            AccessGrantRead(
+                id=f"admin-{resource.id}",
+                resource_id=resource.id,
+                order_id=None,
+                grant_type="lifetime",
+                starts_at=now,
+                expires_at=None,
+                is_lifetime=True,
+            )
+            for resource in resources
+        ]
     accesses = (await db.scalars(select(AccessGrant).where(AccessGrant.user_id == user.id))).all()
     return [AccessGrantRead.model_validate(access) for access in accesses]

@@ -73,12 +73,11 @@ function ProgramCard({
   progressLabel,
 }: ProgramCardProps) {
   const config = sizeConfig[size];
-  const hasAccess = item.hasAccess ?? true;
   const itemActionLabel = item.actionLabel ?? actionLabel;
 
   return (
     <CardShell>
-      <Box sx={{ p: size === "small" ? 0 : 1.5, opacity: hasAccess ? 1 : 0.86 }}>
+      <Box sx={{ p: size === "small" ? 0 : 1.5 }}>
         <Box
           sx={{
             minHeight: config.imageHeight,
@@ -94,10 +93,9 @@ function ProgramCard({
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
-            filter: hasAccess ? "none" : "grayscale(1)",
           }}
         >
-          {size !== "small" && hasAccess && item.status ? (
+          {size !== "small" && item.status ? (
             <Chip
               label={item.status}
               sx={{
@@ -227,10 +225,10 @@ function ProgramCard({
                 sx={{
                   height: 7,
                   borderRadius: 999,
-                  bgcolor: hasAccess ? "rgba(184, 159, 116, 0.18)" : "rgba(95, 88, 79, 0.16)",
+                  bgcolor: "rgba(184, 159, 116, 0.18)",
                   "& .MuiLinearProgress-bar": {
                     borderRadius: 999,
-                    bgcolor: hasAccess ? item.accent ?? "secondary.main" : "rgba(95, 88, 79, 0.55)",
+                    bgcolor: item.accent ?? "secondary.main",
                   },
                 }}
               />

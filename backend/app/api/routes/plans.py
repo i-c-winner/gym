@@ -17,6 +17,6 @@ async def list_plans(
 ) -> list[PlanRead]:
     query = select(Plan).where(Plan.is_active.is_(True))
     if resource_slug:
-        query = query.join(Plan.resource).where(Resource.slug == resource_slug)
+        query = query.join(Resource, Plan.resource_id == Resource.id).where(Resource.slug == resource_slug)
     plans = (await db.scalars(query)).all()
     return [PlanRead.model_validate(plan) for plan in plans]

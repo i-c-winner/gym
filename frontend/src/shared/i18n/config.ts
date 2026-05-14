@@ -32,6 +32,11 @@ if (!i18n.isInitialized) {
       useSuspense: false,
     },
   });
+} else {
+  // Reload translations on HMR so the server singleton gets fresh content
+  for (const [lng, { translation }] of Object.entries(resources)) {
+    i18n.addResourceBundle(lng, "translation", translation, true, true);
+  }
 }
 
 export { i18n, languageStorageKey, defaultLanguage };

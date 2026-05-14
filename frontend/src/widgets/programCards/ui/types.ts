@@ -8,7 +8,6 @@ export type ProgramCardItem = {
   actionLabel?: string;
   description?: string;
   duration?: string;
-  hasAccess?: boolean;
   href?: string;
   lessons?: string;
   progress?: number;

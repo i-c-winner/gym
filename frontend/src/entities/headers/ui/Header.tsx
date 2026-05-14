@@ -21,6 +21,7 @@ function Header() {
   const items = [
     { label: t("header.registration"), href: "/" },
     { label: t("header.main"), href: "/main" },
+    { label: t("header.programs"), href: "/programs" },
     { label: t("header.account"), href: "/account" },
   ];
 
