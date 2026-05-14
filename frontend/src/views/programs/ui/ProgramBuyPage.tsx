@@ -48,7 +48,7 @@ function ProgramBuyPage({ slug }: { slug: string }) {
   const searchParams = useSearchParams();
   const planId = searchParams.get("plan");
   const { t } = useTranslation();
-  const { isAuthenticated, csrfToken, status: authStatus } = useAuth();
+  const { csrfToken, status: authStatus } = useAuth();
 
   const [resource, setResource] = useState<Resource | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -79,7 +79,7 @@ function ProgramBuyPage({ slug }: { slug: string }) {
     }
     void load();
     return () => { isMounted = false; };
-  }, [slug, planId, isAuthenticated, authStatus, router]);
+  }, [slug, planId, authStatus, router]);
 
   useEffect(() => {
     if (pageState !== "processing") return;
@@ -295,13 +295,19 @@ function ProgramBuyPage({ slug }: { slug: string }) {
                   onClick={async () => {
                     try {
                       await getResourceContent(slug);
-                      if (plan && csrfToken) {
-                        const order = await createOrder(plan.resource_id, plan.id, csrfToken);
-                        await simulatePayment(order.id, provider ?? "click", csrfToken);
-                      }
+                      // access confirmed — navigate
                       router.push(`/account/programs/${slug}`);
-                    } catch (err) {
-                      setModalError((err as ApiError).message ?? t("programBuyPage.error.generic"));
+                    } catch {
+                      // access not yet granted — fallback: create new order + simulate
+                      if (plan && csrfToken) {
+                        try {
+                          const order = await createOrder(plan.resource_id, plan.id, csrfToken);
+                          await simulatePayment(order.id, provider ?? "click", csrfToken);
+                          router.push(`/account/programs/${slug}`);
+                        } catch (fallbackErr) {
+                          setModalError((fallbackErr as ApiError).message ?? t("programBuyPage.error.generic"));
+                        }
+                      }
                     }
                   }}
                   sx={{
