@@ -24,7 +24,7 @@ class PaymentEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     order_id: Mapped[str | None] = mapped_column(ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     status: Mapped[PaymentEventStatus] = mapped_column(
-        Enum(PaymentEventStatus, name="payment_event_status"),
+        Enum(PaymentEventStatus, name="payment_event_status", values_callable=lambda x: [e.value for e in x]),
         default=PaymentEventStatus.RECEIVED,
         nullable=False,
     )

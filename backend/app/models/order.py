@@ -24,7 +24,11 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     plan_id: Mapped[str] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False, index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), nullable=False)
-    status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus, name="order_status"), default=OrderStatus.PENDING, nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(
+        Enum(OrderStatus, name="order_status", values_callable=lambda x: [e.value for e in x]),
+        default=OrderStatus.PENDING,
+        nullable=False,
+    )
     provider: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_order_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
