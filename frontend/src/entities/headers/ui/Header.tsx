@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Box, Button, Menu, MenuItem, Typography } from "@mui/material";
+import { Box, Button, IconButton, Menu, MenuItem, Typography } from "@mui/material";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import { useTranslation } from "react-i18next";
 import { languageStorageKey } from "@/shared/i18n/config";
 
@@ -19,8 +20,6 @@ function Header() {
     languages.find((language) => language.code === i18n.language) ?? languages[0];
 
   const items = [
-    { label: t("header.registration"), href: "/" },
-    { label: t("header.main"), href: "/main" },
     { label: t("header.programs"), href: "/programs" },
     { label: t("header.account"), href: "/account" },
   ];
@@ -60,18 +59,37 @@ function Header() {
           boxShadow: "0 10px 24px rgba(62, 56, 47, 0.08)",
         }}
       >
-        <Typography
-          sx={{
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontSize: { xs: "1.25rem", md: "1.5rem" },
-            fontWeight: 700,
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Gym
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography
+            sx={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: { xs: "1.25rem", md: "1.5rem" },
+              fontWeight: 700,
+              color: "text.primary",
+              letterSpacing: "-0.02em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Gym
+          </Typography>
+          <Box sx={{ width: "1px", height: 20, bgcolor: "rgba(62, 56, 47, 0.15)", mx: 0.5 }} />
+          <IconButton
+            component={Link}
+            href="/main"
+            aria-label={t("header.main")}
+            sx={{
+              color: "secondary.main",
+              bgcolor: "transparent",
+              border: "1px solid transparent",
+              "&:hover": {
+                bgcolor: "rgba(184, 159, 116, 0.12)",
+                borderColor: "rgba(184, 159, 116, 0.3)",
+              },
+            }}
+          >
+            <HomeRoundedIcon sx={{ fontSize: "1.62rem" }} />
+          </IconButton>
+        </Box>
 
         <Box
           component="nav"

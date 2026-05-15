@@ -3,7 +3,7 @@ const ru = {
     registration: "Регистрация",
     main: "Главная",
     programs: "Программы",
-    account: "Кабинет",
+    account: "Моё пространство",
     language: "Выбрать язык",
   },
   programs: {

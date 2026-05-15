@@ -3,7 +3,7 @@ const uz = {
     registration: "Ro'yxatdan o'tish",
     main: "Asosiy",
     programs: "Dasturlar",
-    account: "Kabinet",
+    account: "Mening maydonim",
     language: "Tilni tanlash",
   },
   programs: {

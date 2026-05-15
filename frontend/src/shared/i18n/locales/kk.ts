@@ -3,7 +3,7 @@ const kk = {
     registration: "Тіркелу",
     main: "Басты бет",
     programs: "Бағдарламалар",
-    account: "Кабинет",
+    account: "Менің кеңістігім",
     language: "Тілді таңдау",
   },
   programs: {
