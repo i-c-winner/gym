@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.resource import Resource
 from app.models.session import Session as DbSession
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.access_service import access_service
 from app.services.resource_service import resource_service
 from app.services.session_service import session_service
@@ -56,6 +56,18 @@ async def csrf_protect(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
 
 
+async def require_trainer(user: User = Depends(get_current_user)) -> User:
+    if user.role not in (UserRole.TRAINER, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Trainer or admin required")
+    return user
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
+    return user
+
+
 async def get_resource_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> Resource:
     resource = await resource_service.get_by_slug(db, slug)
     if not resource:
@@ -68,7 +80,12 @@ async def require_resource_access(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Resource:
-    if user.telegram_id and user.telegram_id in settings.admin_telegram_ids:
+    from app.services.subscription_service import subscription_service
+
+    if user.role == UserRole.ADMIN:
         return resource
-    await access_service.require_access(db, user.id, resource)
-    return resource
+    if await access_service.user_has_access(db, user.id, resource.id):
+        return resource
+    if await subscription_service.user_has_active(db, user.id, resource.id):
+        return resource
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

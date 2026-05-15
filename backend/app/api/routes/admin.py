@@ -3,11 +3,12 @@ from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_admin
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.access_grant import AccessGrant
 from app.models.resource import Resource
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
@@ -16,6 +17,8 @@ def require_admin_secret(x_admin_secret: str | None = Header(default=None)) -> N
     if not settings.admin_secret or x_admin_secret != settings.admin_secret:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
+
+# ── Revoke access ────────────────────────────────────────────────────────────
 
 class RevokeAccessRequest(BaseModel):
     telegram_id: str
@@ -32,9 +35,8 @@ class RevokeAccessResponse(BaseModel):
 @router.post(
     "/revoke-access",
     response_model=RevokeAccessResponse,
-    dependencies=[Depends(require_admin_secret)],
+    dependencies=[Depends(require_admin)],
     summary="Revoke user access to a resource",
-    description="Deletes all AccessGrants for the given telegram_id + resource_slug. Requires X-Admin-Secret header.",
 )
 async def revoke_access(
     payload: RevokeAccessRequest,
@@ -62,3 +64,54 @@ async def revoke_access(
         telegram_id=payload.telegram_id,
         resource_slug=payload.resource_slug,
     )
+
+
+# ── User role management ─────────────────────────────────────────────────────
+
+class SetRoleRequest(BaseModel):
+    role: UserRole
+
+
+class UserRoleResponse(BaseModel):
+    user_id: str
+    telegram_id: str | None
+    role: str
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    response_model=UserRoleResponse,
+    dependencies=[Depends(require_admin_secret)],
+    summary="Change user role",
+    description="Sets role for a user. Requires X-Admin-Secret header.",
+)
+async def set_user_role(
+    user_id: str,
+    payload: SetRoleRequest,
+    db: AsyncSession = Depends(get_db),
+) -> UserRoleResponse:
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.role = payload.role
+    await db.commit()
+
+    return UserRoleResponse(
+        user_id=user.id,
+        telegram_id=user.telegram_id,
+        role=user.role.value,
+    )
+
+
+@router.get(
+    "/users",
+    summary="List all users with roles",
+    dependencies=[Depends(require_admin)],
+)
+async def list_users(db: AsyncSession = Depends(get_db)) -> list[UserRoleResponse]:
+    users = (await db.scalars(select(User).order_by(User.created_at.desc()))).all()
+    return [
+        UserRoleResponse(user_id=u.id, telegram_id=u.telegram_id, role=u.role.value)
+        for u in users
+    ]

@@ -88,6 +88,7 @@ class AuthResponse(BaseModel):
     last_name: str | None
     age: int | None
     gender: str | None
+    role: str
     csrf_token: str
 
     model_config = {

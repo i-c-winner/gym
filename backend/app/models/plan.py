@@ -1,4 +1,5 @@
 from decimal import Decimal
+from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint
@@ -15,6 +16,11 @@ class PlanDuration(StrEnum):
     LIFETIME = "lifetime"
 
 
+class PlanType(StrEnum):
+    ONLINE = "online"
+    ATTENDANCE = "attendance"
+
+
 class Plan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "plans"
     __table_args__ = (UniqueConstraint("resource_id", "code", name="uq_plans_resource_code"),)
@@ -22,6 +28,12 @@ class Plan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     resource_id: Mapped[str] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    plan_type: Mapped[PlanType] = mapped_column(
+        Enum(PlanType, name="plan_type", values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=PlanType.ONLINE,
+        server_default=PlanType.ONLINE.value,
+    )
     duration_type: Mapped[PlanDuration] = mapped_column(
         Enum(PlanDuration, name="plan_duration", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -30,6 +42,8 @@ class Plan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), default="USD", nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    class_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_extensions: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     resource = relationship("Resource", back_populates="plans")
     orders = relationship("Order", back_populates="plan")

@@ -54,22 +54,29 @@ class PaymentService:
             raise
         return event
 
-    async def mark_order_paid_and_grant_access(self, db: AsyncSession, order: Order) -> AccessGrant:
+    async def mark_order_paid_and_grant_access(self, db: AsyncSession, order: Order) -> AccessGrant | object:
+        from app.models.plan import PlanType
+        from app.models.subscription import Subscription
+        from app.services.subscription_service import subscription_service
+
+        plan = order.plan
+
         if order.status == OrderStatus.PAID:
-            existing = await db.scalar(select(AccessGrant).where(AccessGrant.order_id == order.id))
+            if plan.plan_type == PlanType.ATTENDANCE:
+                existing = await db.scalar(select(Subscription).where(Subscription.order_id == order.id))
+            else:
+                existing = await db.scalar(select(AccessGrant).where(AccessGrant.order_id == order.id))
             if existing:
                 return existing
 
-        plan = order.plan
+        order.status = OrderStatus.PAID
+
+        if plan.plan_type == PlanType.ATTENDANCE:
+            return await subscription_service.create_from_order(db, order, plan)
+
         starts_at = datetime.now(UTC)
         is_lifetime = plan.duration_type == PlanDuration.LIFETIME
         expires_at = None if is_lifetime else starts_at + relativedelta(months=plan.duration_months or 0)
-
-        order.status = OrderStatus.PAID
-        access = await db.scalar(select(AccessGrant).where(AccessGrant.order_id == order.id))
-        if access:
-            return access
-
         access = AccessGrant(
             user_id=order.user_id,
             resource_id=order.resource_id,

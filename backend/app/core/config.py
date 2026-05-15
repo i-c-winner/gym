@@ -102,6 +102,7 @@ class Settings:
     access_content_placeholder: str = env_str("ACCESS_CONTENT_PLACEHOLDER", "Protected resource content.")
     webhook_signature_header: str = env_str("WEBHOOK_SIGNATURE_HEADER", "X-Payment-Signature")
     csrf_safe_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS")
+    absence_notice_hours: int = env_int("ABSENCE_NOTICE_HOURS", 24)
 
 
 settings = Settings()

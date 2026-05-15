@@ -27,6 +27,8 @@ type TelegramUser = {
   hash: string;
 };
 
+type UserRole = "user" | "trainer" | "admin";
+
 type AuthUser = {
   id: string;
   telephone: string | null;
@@ -35,6 +37,7 @@ type AuthUser = {
   last_name: string | null;
   age: number | null;
   gender: string | null;
+  role: UserRole;
   created_at?: string;
 };
 
@@ -46,6 +49,7 @@ type AuthPayload = {
   last_name: string | null;
   age: number | null;
   gender: string | null;
+  role: UserRole;
   csrf_token: string;
 };
 
@@ -70,6 +74,7 @@ function mapAuthPayload(payload: AuthPayload): AuthUser {
     last_name: payload.last_name,
     age: payload.age,
     gender: payload.gender,
+    role: payload.role,
   };
 }
 
@@ -88,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         last_name: "User",
         age: null,
         gender: null,
+        role: "admin",
       });
       setCsrfToken(null);
       setStatus("authenticated");
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         last_name: telegramUser.last_name ?? "User",
         age: null,
         gender: null,
+        role: "admin",
       });
       setCsrfToken(null);
       setStatus("authenticated");
@@ -234,4 +241,4 @@ export function useAuth() {
   return context;
 }
 
-export type { AuthUser, TelegramUser };
+export type { AuthUser, TelegramUser, UserRole };

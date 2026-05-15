@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Box, Button, IconButton, Menu, MenuItem, Typography } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import { useTranslation } from "react-i18next";
@@ -15,6 +16,7 @@ const languages = [
 
 function Header() {
   const { i18n, t } = useTranslation();
+  const pathname = usePathname();
   const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null);
   const currentLanguage =
     languages.find((language) => language.code === i18n.language) ?? languages[0];
@@ -55,7 +57,7 @@ function Header() {
           border: "1px solid rgba(62, 56, 47, 0.08)",
           borderRadius: "999px",
           bgcolor: "rgba(255, 253, 248, 0.82)",
-          backdropFilter: "blur(14px)",
+          backdropFilter: "blur(16px)",
           boxShadow: "0 10px 24px rgba(62, 56, 47, 0.08)",
         }}
       >
@@ -78,12 +80,15 @@ function Header() {
             href="/main"
             aria-label={t("header.main")}
             sx={{
-              color: "secondary.main",
-              bgcolor: "transparent",
-              border: "1px solid transparent",
+              color: pathname === "/main" ? "secondary.main" : "text.secondary",
+              bgcolor: pathname === "/main" ? "rgba(184, 159, 116, 0.12)" : "transparent",
+              border: "1px solid",
+              borderColor: pathname === "/main" ? "rgba(184, 159, 116, 0.3)" : "transparent",
+              transition: "all 0.2s ease",
               "&:hover": {
                 bgcolor: "rgba(184, 159, 116, 0.12)",
                 borderColor: "rgba(184, 159, 116, 0.3)",
+                color: "secondary.main",
               },
             }}
           >
@@ -101,31 +106,36 @@ function Header() {
             flexWrap: "wrap",
           }}
         >
-          {items.map((item) => (
-            <Button
-              key={item.label}
-              component={Link}
-              href={item.href}
-              sx={{
-                minWidth: "unset",
-                px: { xs: 1.25, sm: 1.75 },
-                py: 0.75,
-                borderRadius: "999px",
-                color: "text.primary",
-                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                fontWeight: 500,
-                lineHeight: 1,
-                bgcolor: "transparent",
-                border: "1px solid transparent",
-                "&:hover": {
-                  bgcolor: "background.paper",
-                  borderColor: "rgba(62, 56, 47, 0.08)",
-                },
-              }}
-            >
-              {item.label}
-            </Button>
-          ))}
+          {items.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <Button
+                key={item.label}
+                component={Link}
+                href={item.href}
+                sx={{
+                  minWidth: "unset",
+                  px: { xs: 1.25, sm: 1.75 },
+                  py: 0.75,
+                  borderRadius: "999px",
+                  color: isActive ? "secondary.main" : "text.primary",
+                  fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                  fontWeight: isActive ? 600 : 500,
+                  lineHeight: 1,
+                  bgcolor: isActive ? "rgba(184, 159, 116, 0.1)" : "transparent",
+                  border: "1px solid",
+                  borderColor: isActive ? "rgba(184, 159, 116, 0.25)" : "transparent",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: isActive ? "rgba(184, 159, 116, 0.14)" : "background.paper",
+                    borderColor: isActive ? "rgba(184, 159, 116, 0.3)" : "rgba(62, 56, 47, 0.08)",
+                  },
+                }}
+              >
+                {item.label}
+              </Button>
+            );
+          })}
           <Button
             type="button"
             aria-label={t("header.language")}
@@ -134,24 +144,34 @@ function Header() {
             aria-expanded={languageAnchor ? "true" : undefined}
             onClick={(event) => setLanguageAnchor(event.currentTarget)}
             sx={{
-              minWidth: 38,
-              width: 38,
-              height: 38,
-              p: 0,
+              minWidth: "unset",
+              px: 1.25,
+              py: 0.75,
               ml: { xs: 0.25, sm: 0.5 },
-              borderRadius: "50%",
-              border: "2px solid #ffffff",
-              bgcolor: "rgba(255, 253, 248, 0.34)",
-              boxShadow: "0 6px 14px rgba(62, 56, 47, 0.14)",
-              fontSize: "1.125rem",
+              borderRadius: "999px",
+              border: "1px solid rgba(62, 56, 47, 0.12)",
+              bgcolor: "rgba(255, 253, 248, 0.6)",
+              boxShadow: "0 2px 8px rgba(62, 56, 47, 0.08)",
+              color: "text.primary",
+              gap: 0.5,
               lineHeight: 1,
+              transition: "all 0.2s ease",
               "&:hover": {
                 bgcolor: "background.paper",
-                borderColor: "#ffffff",
+                borderColor: "rgba(62, 56, 47, 0.16)",
+                boxShadow: "0 4px 12px rgba(62, 56, 47, 0.1)",
               },
             }}
           >
-            {currentLanguage.flag}
+            <Box component="span" sx={{ fontSize: "1rem", lineHeight: 1 }}>
+              {currentLanguage.flag}
+            </Box>
+            <Box
+              component="span"
+              sx={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.05em", opacity: 0.6 }}
+            >
+              {currentLanguage.code.toUpperCase()}
+            </Box>
           </Button>
           <Menu
             id="language-menu"
@@ -167,37 +187,51 @@ function Header() {
                   borderRadius: 2,
                   border: "1px solid rgba(62, 56, 47, 0.08)",
                   boxShadow: "0 14px 34px rgba(62, 56, 47, 0.14)",
+                  overflow: "hidden",
                 },
               },
             }}
           >
-            {languages.map((language) => (
-              <MenuItem
-                key={language.code}
-                selected={language.code === currentLanguage.code}
-                onClick={() => handleLanguageChange(language.code)}
-                sx={{ gap: 1.25, minWidth: 150, fontSize: "0.9375rem" }}
-              >
-                <Box
-                  component="span"
+            {languages.map((language) => {
+              const isSelected = language.code === currentLanguage.code;
+              return (
+                <MenuItem
+                  key={language.code}
+                  selected={isSelected}
+                  onClick={() => handleLanguageChange(language.code)}
                   sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    border: "2px solid #ffffff",
-                    bgcolor: "rgba(255, 253, 248, 0.7)",
-                    boxShadow: "0 3px 10px rgba(62, 56, 47, 0.12)",
-                    fontSize: "1rem",
+                    gap: 1.25,
+                    minWidth: 150,
+                    fontSize: "0.9375rem",
+                    fontWeight: isSelected ? 600 : 400,
+                    transition: "background-color 0.15s ease",
+                    "&.Mui-selected": {
+                      bgcolor: "rgba(184, 159, 116, 0.08)",
+                      "&:hover": { bgcolor: "rgba(184, 159, 116, 0.14)" },
+                    },
                   }}
                 >
-                  {language.flag}
-                </Box>
-                {language.label}
-              </MenuItem>
-            ))}
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      border: isSelected ? "2px solid rgba(184, 159, 116, 0.4)" : "2px solid #ffffff",
+                      bgcolor: "rgba(255, 253, 248, 0.7)",
+                      boxShadow: "0 3px 10px rgba(62, 56, 47, 0.12)",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    {language.flag}
+                  </Box>
+                  {language.label}
+                </MenuItem>
+              );
+            })}
           </Menu>
         </Box>
       </Box>

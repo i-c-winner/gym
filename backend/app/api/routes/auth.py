@@ -104,6 +104,7 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role.value,
         csrf_token=db_session.csrf_token or "",
     )
 
@@ -148,6 +149,7 @@ async def login(payload: LoginRequest, request: Request, response: Response, db:
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role.value,
         csrf_token=db_session.csrf_token or "",
     )
 
@@ -204,5 +206,6 @@ async def refresh(
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role.value,
         csrf_token=new_db_session.csrf_token or "",
     )
