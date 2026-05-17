@@ -20,7 +20,9 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "react-i18next": "^17.0.6"
+    "react-i18next": "^17.0.6",
+
+
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",

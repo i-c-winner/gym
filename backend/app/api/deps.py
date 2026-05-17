@@ -72,3 +72,17 @@ async def require_resource_access(
         return resource
     await access_service.require_access(db, user.id, resource)
     return resource
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    from app.models.user import UserRole
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+async def require_trainer(user: User = Depends(get_current_user)) -> User:
+    from app.models.user import UserRole
+    if user.role not in (UserRole.TRAINER, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Trainer access required")
+    return user
