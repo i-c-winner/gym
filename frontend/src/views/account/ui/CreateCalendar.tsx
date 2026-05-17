@@ -1,0 +1,693 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  Grid,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Select,
+  Skeleton,
+  Stack,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import CalendarViewMonthOutlinedIcon from "@mui/icons-material/CalendarViewMonthOutlined";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
+import { useAuth } from "@/features/auth/model/auth-context";
+import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
+import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
+import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
+import { AccountPageHeader } from "@/widgets/account-layout/ui/AccountPageHeader";
+import { CardShell } from "@/shared/ui/CardShell";
+import {
+  getAdminClassTypes,
+  getAdminUsers,
+  createClassType,
+  updateClassType,
+  setClassTypeSchedules,
+  deactivateClassType,
+  materializeSessions,
+  type ClassType,
+  type TrainerUser,
+} from "@/shared/api/gym";
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+type ScheduleDraft = {
+  enabled: boolean;
+  time: string; // "HH:MM"
+};
+
+const DEFAULT_SCHEDULE: ScheduleDraft[] = DAY_LABELS.map(() => ({
+  enabled: false,
+  time: "09:00",
+}));
+
+type FormState = {
+  title: string;
+  description: string;
+  trainer_id: string;
+  duration_minutes: string;
+  max_participants: string;
+  base_rate_per_day: string;
+  schedule: ScheduleDraft[];
+};
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  description: "",
+  trainer_id: "",
+  duration_minutes: "60",
+  max_participants: "10",
+  base_rate_per_day: "300",
+  schedule: DEFAULT_SCHEDULE.map((s) => ({ ...s })),
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function classTypeToForm(ct: ClassType): FormState {
+  const schedule = DEFAULT_SCHEDULE.map((d) => ({ ...d }));
+  for (const slot of ct.schedules) {
+    const dow = slot.day_of_week;
+    if (dow >= 0 && dow < 7) {
+      schedule[dow] = {
+        enabled: true,
+        time: slot.start_time.slice(0, 5), // "HH:MM:SS" → "HH:MM"
+      };
+    }
+  }
+  return {
+    title: ct.title,
+    description: ct.description ?? "",
+    trainer_id: ct.trainer_id,
+    duration_minutes: String(ct.duration_minutes),
+    max_participants: String(ct.max_participants),
+    base_rate_per_day: ct.base_rate_per_day,
+    schedule,
+  };
+}
+
+function trainerLabel(t: TrainerUser): string {
+  return [t.first_name, t.last_name].filter(Boolean).join(" ") || t.telephone || t.id.slice(0, 8);
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ClassTypeCard({
+  ct,
+  trainers,
+  onEdit,
+  onToggle,
+}: {
+  ct: ClassType;
+  trainers: TrainerUser[];
+  onEdit: () => void;
+  onToggle: () => void;
+}) {
+  const trainer = trainers.find((t) => t.id === ct.trainer_id);
+  const days = ct.schedules.map((s) => DAY_LABELS[s.day_of_week]).join(", ");
+
+  return (
+    <CardShell>
+      <Box sx={{ p: 2 }}>
+        <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+          <Box sx={{ flex: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", mb: 0.5 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: "1rem", color: "text.primary" }}>
+                {ct.title}
+              </Typography>
+              <Chip
+                label={ct.is_active ? "Активно" : "Неактивно"}
+                size="small"
+                sx={{
+                  bgcolor: ct.is_active ? "rgba(106, 123, 106, 0.14)" : "rgba(62,56,47,0.08)",
+                  color: ct.is_active ? "primary.main" : "text.secondary",
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                }}
+              />
+            </Stack>
+            {trainer && (
+              <Typography sx={{ fontSize: "0.875rem", color: "text.secondary" }}>
+                {trainerLabel(trainer)}
+              </Typography>
+            )}
+          </Box>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Редактировать">
+              <IconButton size="small" onClick={onEdit}>
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={ct.is_active ? "Деактивировать" : "Активировать"}>
+              <IconButton size="small" onClick={onToggle} color={ct.is_active ? "default" : "primary"}>
+                <DeleteOutlineRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Stack>
+
+        <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", gap: 1.5 }}>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+            <AccessTimeRoundedIcon sx={{ fontSize: 15, color: "text.secondary" }} />
+            <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+              {ct.duration_minutes} мин
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+            <GroupOutlinedIcon sx={{ fontSize: 15, color: "text.secondary" }} />
+            <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+              до {ct.max_participants} чел.
+            </Typography>
+          </Stack>
+          <Typography sx={{ fontSize: "0.8125rem", color: "secondary.main", fontWeight: 600 }}>
+            {Number(ct.base_rate_per_day).toLocaleString("ru-RU")} ₽/день
+          </Typography>
+        </Stack>
+
+        {days && (
+          <Typography sx={{ mt: 1, fontSize: "0.8125rem", color: "text.secondary" }}>
+            {days}
+          </Typography>
+        )}
+      </Box>
+    </CardShell>
+  );
+}
+
+function ScheduleEditor({
+  schedule,
+  onChange,
+}: {
+  schedule: ScheduleDraft[];
+  onChange: (next: ScheduleDraft[]) => void;
+}) {
+  const toggle = (i: number) => {
+    const next = schedule.map((s, idx) =>
+      idx === i ? { ...s, enabled: !s.enabled } : s,
+    );
+    onChange(next);
+  };
+
+  const setTime = (i: number, time: string) => {
+    const next = schedule.map((s, idx) => (idx === i ? { ...s, time } : s));
+    onChange(next);
+  };
+
+  return (
+    <Box>
+      <Typography sx={{ fontSize: "0.875rem", color: "text.secondary", mb: 1.5 }}>
+        Расписание
+      </Typography>
+      <Stack spacing={1}>
+        {DAY_LABELS.map((label, i) => (
+          <Stack key={label} direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <Chip
+              label={label}
+              onClick={() => toggle(i)}
+              sx={{
+                minWidth: 48,
+                fontWeight: 600,
+                cursor: "pointer",
+                bgcolor: schedule[i].enabled ? "primary.main" : "rgba(62,56,47,0.07)",
+                color: schedule[i].enabled ? "primary.contrastText" : "text.secondary",
+                "&:hover": {
+                  bgcolor: schedule[i].enabled ? "primary.dark" : "rgba(62,56,47,0.13)",
+                },
+                transition: "background 0.15s",
+              }}
+            />
+            {schedule[i].enabled && (
+              <TextField
+                size="small"
+                type="time"
+                value={schedule[i].time}
+                onChange={(e) => setTime(i, e.target.value)}
+                sx={{ width: 130 }}
+                slotProps={{ htmlInput: { step: 300 } }}
+              />
+            )}
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+// ── Main view ────────────────────────────────────────────────────────────────
+
+function CreateCalendar() {
+  const router = useRouter();
+  const { user, status, csrfToken, logout } = useAuth();
+  const { displayName, profileSubtitle } = useUserDisplay();
+  const navItems = useAccountNavItems("/account/create_calendar");
+
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+  const [trainers, setTrainers] = useState<TrainerUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null); // null = creating new
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [materializing, setMaterializing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // ── Admin guard
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "anonymous" || user?.role !== "admin") {
+      router.replace("/account");
+    }
+  }, [status, user, router]);
+
+  // ── Load data
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [cts, users] = await Promise.all([getAdminClassTypes(true), getAdminUsers()]);
+      setClassTypes(cts);
+      setTrainers(users.filter((u) => u.role === "trainer" || u.role === "admin"));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Не удалось загрузить данные: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated" && user?.role === "admin") {
+      void loadData();
+    }
+  }, [status, user, loadData]);
+
+  // ── Scroll to form when editing
+  const startEditing = (ct: ClassType) => {
+    setEditingId(ct.id);
+    setForm(classTypeToForm(ct));
+    setError(null);
+    setSuccess(null);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+
+  const startCreating = () => {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, schedule: DEFAULT_SCHEDULE.map((s) => ({ ...s })) });
+    setError(null);
+    setSuccess(null);
+  };
+
+  const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // ── Save
+  const handleSave = async () => {
+    if (!csrfToken) { setError("Сессия истекла, обновите страницу"); return; }
+    if (!form.title.trim()) { setError("Введите название занятия"); return; }
+    if (!form.trainer_id) { setError("Выберите тренера"); return; }
+    const activeSlots = form.schedule
+      .map((s, i) => ({ day_of_week: i, start_time: s.time + ":00", enabled: s.enabled }))
+      .filter((s) => s.enabled);
+    if (!activeSlots.length) { setError("Добавьте хотя бы один день расписания"); return; }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        trainer_id: form.trainer_id,
+        duration_minutes: Number(form.duration_minutes),
+        max_participants: Number(form.max_participants),
+        base_rate_per_day: Number(form.base_rate_per_day),
+      };
+      const slots = activeSlots.map(({ day_of_week, start_time }) => ({ day_of_week, start_time }));
+
+      if (editingId) {
+        await updateClassType(editingId, payload, csrfToken);
+        await setClassTypeSchedules(editingId, slots, csrfToken);
+        setSuccess("Занятие обновлено");
+      } else {
+        await createClassType({ ...payload, schedules: slots }, csrfToken);
+        setSuccess("Занятие создано");
+        startCreating();
+      }
+      await loadData();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка сохранения";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Toggle active
+  const handleToggle = async (ct: ClassType) => {
+    if (!csrfToken) return;
+    try {
+      if (ct.is_active) {
+        await deactivateClassType(ct.id, csrfToken);
+      } else {
+        await updateClassType(ct.id, { is_active: true }, csrfToken);
+      }
+      await loadData();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  if (status === "loading" || (status === "authenticated" && user?.role !== "admin")) {
+    return (
+      <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
+      <Grid container spacing={{ xs: 2, md: 3 }}>
+        {/* Sidebar */}
+        <Grid size={{ xs: 12, lg: 2.25 }}>
+          <AccountSidebar
+            navItems={navItems}
+            onLogout={() => void logout().then(() => router.replace("/"))}
+          />
+        </Grid>
+
+        {/* Content */}
+        <Grid size={{ xs: 12, lg: 9.75 }}>
+          <Stack spacing={{ xs: 2, md: 3 }}>
+            <AccountPageHeader
+              title="Управление занятиями"
+              subtitle="Создавайте и редактируйте типы занятий с расписанием"
+              displayName={displayName}
+              profileSubtitle={profileSubtitle}
+              backHref="/account"
+            />
+
+            {/* Action buttons */}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ flexWrap: "wrap" }}>
+              <Button
+                component={Link}
+                href="/account/all-sessions"
+                startIcon={<CalendarViewMonthOutlinedIcon />}
+                sx={{
+                  borderRadius: 3,
+                  border: "1.5px solid rgba(106,123,106,0.35)",
+                  color: "primary.main",
+                  px: 2.5,
+                  py: 1,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "rgba(106,123,106,0.07)", borderColor: "primary.main" },
+                }}
+              >
+                Расписание всех занятий
+              </Button>
+
+              <Button
+                onClick={() => {
+                  if (!csrfToken) { setError("Нет CSRF-токена, обновите страницу"); return; }
+                  setMaterializing(true);
+                  materializeSessions(csrfToken)
+                    .then(({ created }) => {
+                      setSuccess(
+                        created > 0
+                          ? `Сгенерировано ${created} новых занятий`
+                          : "Новых занятий не добавлено — все уже созданы",
+                      );
+                    })
+                    .catch((e: unknown) => setError(e instanceof Error ? e.message : "Ошибка"))
+                    .finally(() => setMaterializing(false));
+                }}
+                disabled={materializing}
+                startIcon={
+                  materializing
+                    ? <CircularProgress size={16} sx={{ color: "inherit" }} />
+                    : <AutorenewRoundedIcon />
+                }
+                sx={{
+                  borderRadius: 3,
+                  border: "1.5px solid rgba(184,159,116,0.45)",
+                  color: "secondary.main",
+                  px: 2.5,
+                  py: 1,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: "rgba(184,159,116,0.07)", borderColor: "secondary.main" },
+                  "&:disabled": { opacity: 0.6 },
+                }}
+              >
+                {materializing ? "Генерация..." : "Сгенерировать занятия"}
+              </Button>
+            </Stack>
+
+            <Grid container spacing={{ xs: 2, md: 3 }}>
+              {/* Left: list */}
+              <Grid size={{ xs: 12, md: 5 }}>
+                <Stack spacing={2}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography
+                      sx={{
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        fontSize: { xs: "1.5rem", md: "1.75rem" },
+                        color: "text.primary",
+                      }}
+                    >
+                      Типы занятий
+                    </Typography>
+                    <Button
+                      size="small"
+                      startIcon={<AddRoundedIcon />}
+                      onClick={startCreating}
+                      sx={{
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
+                        borderRadius: 3,
+                        px: 2,
+                        "&:hover": { bgcolor: "primary.dark" },
+                      }}
+                    >
+                      Новое
+                    </Button>
+                  </Stack>
+
+                  {loading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} variant="rounded" height={110} sx={{ borderRadius: 3 }} />
+                    ))
+                  ) : classTypes.length === 0 ? (
+                    <CardShell>
+                      <Box sx={{ p: 4, textAlign: "center" }}>
+                        <Typography sx={{ color: "text.secondary" }}>
+                          Нет созданных занятий
+                        </Typography>
+                      </Box>
+                    </CardShell>
+                  ) : (
+                    classTypes.map((ct) => (
+                      <ClassTypeCard
+                        key={ct.id}
+                        ct={ct}
+                        trainers={trainers}
+                        onEdit={() => startEditing(ct)}
+                        onToggle={() => void handleToggle(ct)}
+                      />
+                    ))
+                  )}
+                </Stack>
+              </Grid>
+
+              {/* Right: form */}
+              <Grid size={{ xs: 12, md: 7 }}>
+                <div ref={formRef}>
+                  <CardShell>
+                    <Box sx={{ p: { xs: 2, md: 3 } }}>
+                      <Typography
+                        sx={{
+                          fontFamily: "Georgia, 'Times New Roman', serif",
+                          fontSize: { xs: "1.5rem", md: "1.75rem" },
+                          color: "text.primary",
+                          mb: 3,
+                        }}
+                      >
+                        {editingId ? "Редактирование" : "Новое занятие"}
+                      </Typography>
+
+                      {error && (
+                        <Alert severity="error" sx={{ mb: 2, borderRadius: 3 }} onClose={() => setError(null)}>
+                          {error}
+                        </Alert>
+                      )}
+                      {success && (
+                        <Alert severity="success" sx={{ mb: 2, borderRadius: 3 }} onClose={() => setSuccess(null)}>
+                          {success}
+                        </Alert>
+                      )}
+
+                      <Stack spacing={2.5}>
+                        {/* Title */}
+                        <TextField
+                          label="Название"
+                          fullWidth
+                          value={form.title}
+                          onChange={(e) => updateField("title", e.target.value)}
+                          placeholder="Например, Хатха-йога"
+                        />
+
+                        {/* Description */}
+                        <TextField
+                          label="Описание"
+                          fullWidth
+                          multiline
+                          rows={2}
+                          value={form.description}
+                          onChange={(e) => updateField("description", e.target.value)}
+                          placeholder="Краткое описание занятия"
+                        />
+
+                        {/* Trainer */}
+                        <Box>
+                          <Typography sx={{ fontSize: "0.875rem", color: "text.secondary", mb: 0.75 }}>
+                            Тренер
+                          </Typography>
+                          <Select
+                            fullWidth
+                            value={form.trainer_id}
+                            onChange={(e) => updateField("trainer_id", e.target.value)}
+                            displayEmpty
+                            size="small"
+                          >
+                            <MenuItem value="" disabled>
+                              Выберите тренера
+                            </MenuItem>
+                            {trainers.map((t) => (
+                              <MenuItem key={t.id} value={t.id}>
+                                {trainerLabel(t)}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </Box>
+
+                        <Divider />
+
+                        {/* Numeric fields */}
+                        <Grid container spacing={2}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                              label="Длительность"
+                              type="number"
+                              fullWidth
+                              value={form.duration_minutes}
+                              onChange={(e) => updateField("duration_minutes", e.target.value)}
+                              slotProps={{
+                                input: {
+                                  endAdornment: (
+                                    <InputAdornment position="end">мин</InputAdornment>
+                                  ),
+                                  inputProps: { min: 1, max: 480 },
+                                },
+                              }}
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                              label="Мест"
+                              type="number"
+                              fullWidth
+                              value={form.max_participants}
+                              onChange={(e) => updateField("max_participants", e.target.value)}
+                              slotProps={{
+                                input: { inputProps: { min: 1, max: 200 } },
+                              }}
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                              label="Ставка за день"
+                              type="number"
+                              fullWidth
+                              value={form.base_rate_per_day}
+                              onChange={(e) => updateField("base_rate_per_day", e.target.value)}
+                              slotProps={{
+                                input: {
+                                  endAdornment: (
+                                    <InputAdornment position="end">₽</InputAdornment>
+                                  ),
+                                  inputProps: { min: 0 },
+                                },
+                              }}
+                            />
+                          </Grid>
+                        </Grid>
+
+                        <Divider />
+
+                        {/* Schedule */}
+                        <ScheduleEditor
+                          schedule={form.schedule}
+                          onChange={(s) => updateField("schedule", s)}
+                        />
+
+                        <Divider />
+
+                        {/* Actions */}
+                        <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
+                          {editingId && (
+                            <Button
+                              onClick={startCreating}
+                              sx={{ borderRadius: 3, color: "text.secondary" }}
+                            >
+                              Отмена
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => void handleSave()}
+                            disabled={saving}
+                            startIcon={saving ? <CircularProgress size={16} /> : <CheckRoundedIcon />}
+                            sx={{
+                              px: 3,
+                              borderRadius: 3,
+                              bgcolor: "primary.main",
+                              color: "primary.contrastText",
+                              "&:hover": { bgcolor: "primary.dark" },
+                              "&:disabled": { opacity: 0.6 },
+                            }}
+                          >
+                            {saving ? "Сохранение..." : editingId ? "Сохранить" : "Создать"}
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </CardShell>
+                </div>
+              </Grid>
+            </Grid>
+          </Stack>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
+export { CreateCalendar };

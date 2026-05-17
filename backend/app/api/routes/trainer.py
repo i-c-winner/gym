@@ -32,17 +32,17 @@ async def get_past_sessions(
     return [ClassSessionOut.model_validate(s) for s in sessions]
 
 
-@router.get("/sessions/{session_id}/participants", response_model=list[BookingWithUserOut])
+@router.get("/sessions/{class_session_id}/participants", response_model=list[BookingWithUserOut])
 async def get_session_participants(
-    session_id: str,
+    class_session_id: str,
     db: AsyncSession = Depends(get_db),
     trainer: User = Depends(require_trainer),
 ) -> list[BookingWithUserOut]:
     from app.models.class_session import ClassSession
-    sess = await db.get(ClassSession, session_id)
+    sess = await db.get(ClassSession, class_session_id)
     if not sess or sess.trainer_id != trainer.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your session")
-    bookings = await booking_service.list_for_session(db, session_id)
+    bookings = await booking_service.list_for_session(db, class_session_id)
     result = []
     for b in bookings:
         out = BookingWithUserOut.model_validate(b)
@@ -54,16 +54,15 @@ async def get_session_participants(
     return result
 
 
-@router.post("/sessions/{session_id}/attendance", response_model=list[BookingOut])
+@router.post("/sessions/{class_session_id}/attendance", response_model=list[BookingOut])
 async def mark_attendance(
-    session_id: str,
+    class_session_id: str,
     marks: list[AttendanceMarkIn],
     db: AsyncSession = Depends(get_db),
     trainer: User = Depends(require_trainer),
 ) -> list[BookingOut]:
-    # Mark session as completed first
     from app.models.class_session import ClassSession, ClassSessionStatus
-    sess = await db.get(ClassSession, session_id)
+    sess = await db.get(ClassSession, class_session_id)
     if not sess or sess.trainer_id != trainer.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your session")
     if sess.status != ClassSessionStatus.COMPLETED:

@@ -1,7 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect, get_current_session, get_current_user
@@ -104,6 +105,7 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role,
         csrf_token=db_session.csrf_token or "",
     )
 
@@ -148,6 +150,7 @@ async def login(payload: LoginRequest, request: Request, response: Response, db:
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role,
         csrf_token=db_session.csrf_token or "",
     )
 
@@ -204,5 +207,48 @@ async def refresh(
         last_name=user.last_name,
         age=user.age,
         gender=user.gender,
+        role=user.role,
         csrf_token=new_db_session.csrf_token or "",
+    )
+
+
+class DevLoginRequest(BaseModel):
+    telephone: str
+
+
+@router.post(
+    "/dev-login",
+    response_model=AuthResponse,
+    summary="Dev-only login by telephone",
+    description="Creates a real session for local development. Requires X-Admin-Secret header matching ADMIN_SECRET. Disabled if ADMIN_SECRET is not set.",
+)
+async def dev_login(
+    payload: DevLoginRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    x_admin_secret: str | None = Header(default=None, alias="X-Admin-Secret"),
+) -> AuthResponse:
+    if not settings.admin_secret or x_admin_secret != settings.admin_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    user = await auth_service.authenticate(db, telephone=payload.telephone)
+    session_id, refresh_token, db_session = await session_service.create_session(
+        db,
+        user,
+        request.client.host if request.client else None,
+        request.headers.get("user-agent"),
+    )
+    await db.commit()
+    session_service.set_session_cookie(response, session_id)
+    session_service.set_refresh_cookie(response, refresh_token)
+    return AuthResponse(
+        user_id=user.id,
+        telephone=user.telephone,
+        telegram_id=user.telegram_id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        age=user.age,
+        gender=user.gender,
+        role=user.role,
+        csrf_token=db_session.csrf_token or "",
     )

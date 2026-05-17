@@ -215,3 +215,39 @@ async def list_absence_requests(
 ) -> list[AbsenceRequestOut]:
     reqs = await absence_service.list_user_requests(db, user.id)
     return [AbsenceRequestOut.model_validate(r) for r in reqs]
+
+
+# ── User schedule (bookings + session details for calendar) ──────────────────
+
+@router.get("/schedule")
+async def get_user_schedule(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[dict]:
+    """Return all bookings with full session and class type details for calendar display."""
+    from app.models.class_type import ClassType
+
+    result = await db.execute(
+        select(Booking, ClassSession, ClassType)
+        .join(ClassSession, ClassSession.id == Booking.class_session_id)
+        .join(ClassType, ClassType.id == ClassSession.class_type_id)
+        .where(Booking.user_id == user.id)
+        .order_by(ClassSession.scheduled_at)
+    )
+    rows = result.all()
+
+    events = []
+    for booking, session, ct in rows:
+        events.append({
+            "booking_id": str(booking.id),
+            "booking_status": booking.status,
+            "session_id": str(session.id),
+            "scheduled_at": session.scheduled_at.isoformat(),
+            "ends_at": session.ends_at.isoformat(),
+            "class_type_title": ct.title,
+            "class_type_description": ct.description,
+            "duration_minutes": session.duration_minutes_snapshot,
+            "max_participants": session.max_participants_snapshot,
+            "subscription_id": str(booking.subscription_id),
+        })
+    return events

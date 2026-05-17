@@ -1,54 +1,62 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import { useAuth } from "@/features/auth/model/auth-context";
 import type { TelegramUser } from "@/features/auth/model/auth-context";
 
-const devAuthEnabled =
-  process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_DEV_SKIP_AUTH === "true";
 declare global {
   interface Window {
     __onTelegramAuth?: (user: TelegramUser) => void;
   }
 }
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("8") && digits.length === 11) return "+7" + digits.slice(1);
+  if (digits.startsWith("7") && digits.length === 11) return "+" + digits;
+  if (!raw.startsWith("+")) return "+" + digits;
+  return raw.trim();
+}
+
 export function PlaceholderPage() {
   const router = useRouter();
-  const {
-    status,
-    isAuthenticated,
-    user,
-    authenticateWithTelegram,
-    logout,
-    checkAuth,
-  } = useAuth();
+  const { status, isAuthenticated, authenticateWithTelegram, authenticateWithPhone } = useAuth();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     if (status === "authenticated" && isAuthenticated) {
-      router.replace("/main");
+      router.replace("/account");
     }
   }, [isAuthenticated, router, status]);
 
   useEffect(() => {
-    if (devAuthEnabled) {
-      return;
-    }
-
-    if (!widgetRef.current || !botUsername) {
-      return;
-    }
+    if (!widgetRef.current || !botUsername) return;
 
     window.__onTelegramAuth = (telegramUser: TelegramUser) => {
+      setLoading(true);
       void authenticateWithTelegram(telegramUser)
-        .then(() => {
-          router.replace("/main");
-        })
-        .catch((error: unknown) => {
-          console.error("Telegram auth failed", error);
+        .then(() => router.replace("/account"))
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : "Ошибка входа через Telegram");
+          setLoading(false);
         });
     };
 
@@ -62,155 +70,155 @@ export function PlaceholderPage() {
     script.setAttribute("data-userpic", "false");
     script.setAttribute("data-lang", "ru");
     script.setAttribute("data-onauth", "window.__onTelegramAuth(user)");
-
     widgetRef.current.innerHTML = "";
     widgetRef.current.appendChild(script);
 
-    return () => {
-      if (window.__onTelegramAuth) {
-        delete window.__onTelegramAuth;
-      }
-    };
+    return () => { delete window.__onTelegramAuth; };
   }, [authenticateWithTelegram, botUsername, router]);
 
+  const handlePhoneLogin = async () => {
+    const formatted = formatPhone(phone);
+    if (formatted.length < 8) {
+      setError("Введите корректный номер телефона");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await authenticateWithPhone(formatted);
+      router.replace("/account");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ошибка входа";
+      setError(msg === "Invalid credentials" ? "Номер не найден. Проверьте правильность." : msg);
+      setLoading(false);
+    }
+  };
+
+  if (status === "loading") {
+    return (
+      <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <main
-      style={{
+    <Box
+      sx={{
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
-        padding: "24px",
+        px: 2,
+        background:
+          "radial-gradient(circle at top, rgba(46,125,50,0.12), transparent 32%), linear-gradient(180deg, #f4f7f2 0%, #edf2e8 100%)",
       }}
     >
-      <section
-        style={{
-          width: "100%",
-          maxWidth: "520px",
-          border: "1px solid rgba(20, 32, 19, 0.08)",
-          borderRadius: "16px",
-          background: "#ffffff",
-          padding: "32px 24px",
-          textAlign: "center",
-          boxShadow: "0 10px 30px rgba(20, 32, 19, 0.06)",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "32px",
-            lineHeight: 1.1,
-          }}
-        >
-          Фронтенд временно в режиме заглушки
-        </h1>
-        <p
-          style={{
-            margin: "12px 0 0",
-            fontSize: "16px",
-            lineHeight: 1.5,
-            color: "#4f5b4e",
-          }}
-        >
-          Здесь будет новая версия интерфейса.
-        </p>
-
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "16px",
-            borderRadius: "12px",
-            background: "#f5f7f2",
-            textAlign: "left",
-          }}
-        >
-          <p style={{ margin: 0, fontSize: "14px", color: "#4f5b4e" }}>
-            Статус авторизации: <strong>{status}</strong>
-          </p>
-          <p style={{ margin: "8px 0 0", fontSize: "14px", color: "#4f5b4e" }}>
-            Пользователь авторизован: <strong>{isAuthenticated ? "да" : "нет"}</strong>
-          </p>
-          <p style={{ margin: "8px 0 0", fontSize: "14px", color: "#4f5b4e" }}>
-            Пользователь Telegram: <strong>{user?.first_name ?? "не выбран"}</strong>
-          </p>
-        </div>
-
-        <div
-          style={{
-            marginTop: "20px",
-            display: "grid",
-            gap: "12px",
-            justifyItems: "center",
-          }}
-        >
-          <div
-            ref={widgetRef}
-            style={{
-              width: "100%",
-              minHeight: "54px",
-              display: "grid",
-              placeItems: "center",
-            }}
-          />
-
-          {!botUsername ? (
-            <p style={{ margin: 0, fontSize: "13px", color: "#8b5a5a" }}>
-              Укажите `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` в `.env.local`, чтобы включить Telegram Login Widget.
-            </p>
-          ) : null}
-          {devAuthEnabled ? (
-            <p style={{ margin: 0, fontSize: "13px", color: "#4f5b4e" }}>
-              В development включен bypass авторизации. После загрузки произойдет переход на `/main`.
-            </p>
-          ) : null}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            marginTop: "20px",
-          }}
-        >
-          <button
-            onClick={() => {
-              void logout().catch((error: unknown) => {
-                console.error("Logout failed", error);
-              });
-            }}
-            style={{
-              minHeight: "40px",
-              padding: "0 16px",
-              borderRadius: "10px",
-              border: "1px solid rgba(20, 32, 19, 0.12)",
-              background: "#fff",
-              color: "#142013",
-              cursor: "pointer",
+      <Box sx={{ width: "100%", maxWidth: 440 }}>
+        {/* Logo */}
+        <Stack sx={{ textAlign: "center", mb: 4 }}>
+          <Typography
+            sx={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: { xs: "2.25rem", sm: "2.75rem" },
+              color: "#2f2a24",
+              lineHeight: 1.05,
             }}
           >
-            Выйти
-          </button>
-          <button
-            onClick={() => {
-              void checkAuth().catch((error: unknown) => {
-                console.error("Auth status check failed", error);
-              });
-            }}
-            style={{
-              minHeight: "40px",
-              padding: "0 16px",
-              borderRadius: "10px",
-              border: "1px solid rgba(20, 32, 19, 0.12)",
-              background: "#fff",
-              color: "#142013",
-              cursor: "pointer",
+            Balance
+          </Typography>
+          <Typography sx={{ mt: 0.5, fontSize: "1rem", color: "#5f584f" }}>
+            Онлайн-занятия и расписание
+          </Typography>
+        </Stack>
+
+        {/* Card */}
+        <Box
+          sx={{
+            borderRadius: 4,
+            bgcolor: "rgba(255,253,248,0.94)",
+            border: "1px solid rgba(62,56,47,0.08)",
+            boxShadow: "0 16px 48px rgba(62,56,47,0.10)",
+            p: { xs: 3, sm: 4 },
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: "1.5rem",
+              color: "#2f2a24",
+              mb: 0.5,
             }}
           >
-            Проверить статус
-          </button>
-        </div>
-      </section>
-    </main>
+            Вход
+          </Typography>
+          <Typography sx={{ fontSize: "0.9375rem", color: "#5f584f", mb: 3 }}>
+            Введите номер телефона или войдите через Telegram
+          </Typography>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            <TextField
+              label="Номер телефона"
+              placeholder="+7 900 000 00 00"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void handlePhoneLogin(); }}
+              disabled={loading}
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneOutlinedIcon sx={{ color: "text.secondary", fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+            />
+            <Button
+              onClick={() => void handlePhoneLogin()}
+              disabled={loading || !phone.trim()}
+              fullWidth
+              sx={{
+                minHeight: 52,
+                borderRadius: 3,
+                fontSize: "1rem",
+                fontWeight: 600,
+                bgcolor: "#6a7b6a",
+                color: "#fff",
+                "&:hover": { bgcolor: "#5a6b5a" },
+                "&:disabled": { opacity: 0.55 },
+              }}
+            >
+              {loading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Войти"}
+            </Button>
+          </Stack>
+
+          {botUsername && (
+            <>
+              <Divider sx={{ my: 3 }}>
+                <Typography sx={{ fontSize: "0.8125rem", color: "#8a8278", px: 1 }}>
+                  или войдите через Telegram
+                </Typography>
+              </Divider>
+              <Box
+                ref={widgetRef}
+                sx={{ display: "flex", justifyContent: "center", minHeight: 54 }}
+              />
+            </>
+          )}
+        </Box>
+
+        <Typography sx={{ mt: 3, textAlign: "center", fontSize: "0.8125rem", color: "#8a8278", lineHeight: 1.6 }}>
+          Нет аккаунта? Введите номер телефона — он будет создан автоматически.
+        </Typography>
+      </Box>
+    </Box>
   );
 }

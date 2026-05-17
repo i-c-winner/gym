@@ -13,9 +13,21 @@ from app.models.user import User, UserRole
 from app.schemas.class_type import ClassTypeCreate, ClassTypeOut, ClassTypeUpdate, ScheduleSlotIn
 from app.schemas.discount_credit import UserRoleUpdateIn
 from app.services.audit_log_service import audit_log_service
+from app.services.class_session_service import class_session_service
 from app.services.class_type_service import class_type_service
 
 router = APIRouter(prefix="/gym/admin", tags=["gym-admin"])
+
+
+@router.post("/materialize-sessions")
+async def materialize_sessions(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> dict:
+    """Manually trigger session materialization for the configured horizon window."""
+    created = await class_session_service.materialize(db)
+    await db.commit()
+    return {"created": created}
 
 
 @router.get("/class-types", response_model=list[ClassTypeOut])
@@ -40,7 +52,7 @@ async def create_class_type(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid trainer_id")
     ct = await class_type_service.create(db, payload, actor.id)
     await db.commit()
-    await db.refresh(ct)
+    ct = await class_type_service.get_by_id(db, ct.id)
     return ClassTypeOut.model_validate(ct)
 
 
@@ -72,7 +84,7 @@ async def update_class_type(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid trainer_id")
     ct = await class_type_service.update(db, ct, payload, actor.id)
     await db.commit()
-    await db.refresh(ct)
+    ct = await class_type_service.get_by_id(db, ct.id)
     return ClassTypeOut.model_validate(ct)
 
 
@@ -114,7 +126,7 @@ async def set_schedules(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ClassType not found")
     ct = await class_type_service.set_schedules(db, ct, slots, actor.id)
     await db.commit()
-    await db.refresh(ct)
+    ct = await class_type_service.get_by_id(db, ct.id)
     return ClassTypeOut.model_validate(ct)
 
 
@@ -235,4 +247,50 @@ async def get_sessions_report(
             "total_bookings": r.total_bookings,
         }
         for r in rows
+    ]
+
+
+@router.get("/sessions")
+async def get_all_sessions(
+    class_type_id: str | None = None,
+    trainer_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[dict]:
+    """All sessions with class type and trainer details. Supports filter by class_type_id / trainer_id."""
+    from app.models.class_session import ClassSession
+    from app.models.class_type import ClassType
+    from app.models.user import User as UserModel
+    from sqlalchemy.orm import aliased
+
+    Trainer = aliased(UserModel)
+
+    q = (
+        select(ClassSession, ClassType, Trainer)
+        .join(ClassType, ClassType.id == ClassSession.class_type_id)
+        .join(Trainer, Trainer.id == ClassSession.trainer_id)
+        .order_by(ClassSession.scheduled_at)
+    )
+    if class_type_id:
+        q = q.where(ClassSession.class_type_id == class_type_id)
+    if trainer_id:
+        q = q.where(ClassSession.trainer_id == trainer_id)
+
+    result = await db.execute(q)
+    rows = result.all()
+
+    return [
+        {
+            "session_id": str(sess.id),
+            "scheduled_at": sess.scheduled_at.isoformat(),
+            "ends_at": sess.ends_at.isoformat(),
+            "status": sess.status,
+            "class_type_id": str(ct.id),
+            "class_type_title": ct.title,
+            "trainer_id": str(trainer.id),
+            "trainer_name": " ".join(filter(None, [trainer.first_name, trainer.last_name])) or "—",
+            "duration_minutes": sess.duration_minutes_snapshot,
+            "max_participants": sess.max_participants_snapshot,
+        }
+        for sess, ct, trainer in rows
     ]
