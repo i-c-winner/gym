@@ -104,6 +104,77 @@ class ScheduleService:
     async def get_enrollments(self, db: AsyncSession, event_id: str) -> list[Enrollment]:
         return list((await db.scalars(select(Enrollment).where(Enrollment.event_id == event_id))).all())
 
+    async def get_user_enrollments(self, db: AsyncSession, user_id: str) -> list[Enrollment]:
+        return list(
+            (
+                await db.scalars(
+                    select(Enrollment)
+                    .where(Enrollment.user_id == user_id)
+                    .options(selectinload(Enrollment.event))
+                    .order_by(Enrollment.created_at.asc())
+                )
+            ).all()
+        )
+
+    async def auto_enroll_subscription(
+        self,
+        db: AsyncSession,
+        subscription: "Subscription",  # type: ignore[name-defined]
+    ) -> list[Enrollment]:
+        from app.models.subscription import Subscription
+
+        now = datetime.now(UTC)
+        to_enroll = subscription.classes_remaining
+
+        upcoming = list(
+            (
+                await db.scalars(
+                    select(TrainingEvent)
+                    .where(
+                        TrainingEvent.resource_id == subscription.resource_id,
+                        TrainingEvent.status == TrainingEventStatus.SCHEDULED,
+                        TrainingEvent.start_at > now,
+                    )
+                    .order_by(TrainingEvent.start_at.asc())
+                    .limit(to_enroll)
+                )
+            ).all()
+        )
+
+        enrollments: list[Enrollment] = []
+        for event in upcoming:
+            if event.max_participants is not None:
+                count = await db.scalar(
+                    select(func.count(Enrollment.id)).where(
+                        Enrollment.event_id == event.id,
+                        Enrollment.status.in_([EnrollmentStatus.ENROLLED, EnrollmentStatus.NOTIFIED_ABSENT]),
+                    )
+                )
+                if (count or 0) >= event.max_participants:
+                    continue
+
+            existing = await db.scalar(
+                select(Enrollment).where(
+                    Enrollment.user_id == subscription.user_id,
+                    Enrollment.event_id == event.id,
+                )
+            )
+            if existing:
+                continue
+
+            enrollment = Enrollment(
+                user_id=subscription.user_id,
+                event_id=event.id,
+                subscription_id=subscription.id,
+                status=EnrollmentStatus.ENROLLED,
+            )
+            db.add(enrollment)
+            await db.flush()
+            subscription_service.deduct_class(db, subscription, subscription.user_id, enrollment.id)
+            enrollments.append(enrollment)
+
+        return enrollments
+
     async def enroll(self, db: AsyncSession, user: User, event: TrainingEvent) -> Enrollment:
         now = datetime.now(UTC)
         if event.status != TrainingEventStatus.SCHEDULED:

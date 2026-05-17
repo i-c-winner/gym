@@ -72,7 +72,10 @@ class PaymentService:
         order.status = OrderStatus.PAID
 
         if plan.plan_type == PlanType.ATTENDANCE:
-            return await subscription_service.create_from_order(db, order, plan)
+            from app.services.schedule_service import schedule_service
+            sub = await subscription_service.create_from_order(db, order, plan)
+            await schedule_service.auto_enroll_subscription(db, sub)
+            return sub
 
         starts_at = datetime.now(UTC)
         is_lifetime = plan.duration_type == PlanDuration.LIFETIME

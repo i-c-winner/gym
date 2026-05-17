@@ -5,8 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Box, Button, IconButton, Menu, MenuItem, Typography } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import { useTranslation } from "react-i18next";
 import { languageStorageKey } from "@/shared/i18n/config";
+import { useAuth } from "@/features/auth/model/auth-context";
 
 const languages = [
   { code: "ru", label: "Русский", flag: "🇷🇺" },
@@ -17,9 +19,12 @@ const languages = [
 function Header() {
   const { i18n, t } = useTranslation();
   const pathname = usePathname();
+  const { user } = useAuth();
   const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null);
   const currentLanguage =
     languages.find((language) => language.code === i18n.language) ?? languages[0];
+
+  const isStaff = user?.role === "admin" || user?.role === "trainer";
 
   const items = [
     { label: t("header.programs"), href: "/programs" },
@@ -75,6 +80,27 @@ function Header() {
             Gym
           </Typography>
           <Box sx={{ width: "1px", height: 20, bgcolor: "rgba(62, 56, 47, 0.15)", mx: 0.5 }} />
+          {isStaff && (
+            <IconButton
+              component={Link}
+              href="/calendar"
+              aria-label={t("header.calendar")}
+              sx={{
+                color: pathname === "/calendar" ? "secondary.main" : "text.secondary",
+                bgcolor: pathname === "/calendar" ? "rgba(184, 159, 116, 0.12)" : "transparent",
+                border: "1px solid",
+                borderColor: pathname === "/calendar" ? "rgba(184, 159, 116, 0.3)" : "transparent",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  bgcolor: "rgba(184, 159, 116, 0.12)",
+                  borderColor: "rgba(184, 159, 116, 0.3)",
+                  color: "secondary.main",
+                },
+              }}
+            >
+              <CalendarMonthRoundedIcon sx={{ fontSize: "1.4rem" }} />
+            </IconButton>
+          )}
           <IconButton
             component={Link}
             href="/main"

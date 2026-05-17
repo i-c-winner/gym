@@ -8,12 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { request, readCsrfToken, writeCsrfToken, buildApiError } from "@/shared/api/client";
+import { request, readCsrfToken, writeCsrfToken, buildApiError, DEV_AUTH_ENABLED, DEV_SECRET } from "@/shared/api/client";
 import type { ApiError } from "@/shared/api/client";
 
-const DEV_AUTH_ENABLED =
-  process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_DEV_SKIP_AUTH === "true";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -86,16 +83,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     if (DEV_AUTH_ENABLED) {
       setUser({
-        id: "dev-id",
+        id: "00000000-0000-0000-0000-000000000000",
         telephone: null,
-        telegram_id: "123456789",
+        telegram_id: null,
         first_name: "Dev",
-        last_name: "User",
+        last_name: "Admin",
         age: null,
         gender: null,
         role: "admin",
       });
-      setCsrfToken(null);
+      writeCsrfToken(DEV_SECRET);
+      setCsrfToken(DEV_SECRET);
       setStatus("authenticated");
       return;
     }
@@ -122,16 +120,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authenticateWithTelegram = useCallback(async (telegramUser: TelegramUser) => {
     if (DEV_AUTH_ENABLED) {
       setUser({
-        id: "dev-id",
+        id: "00000000-0000-0000-0000-000000000000",
         telephone: null,
         telegram_id: String(telegramUser.id),
         first_name: telegramUser.first_name ?? "Dev",
-        last_name: telegramUser.last_name ?? "User",
+        last_name: telegramUser.last_name ?? "Admin",
         age: null,
         gender: null,
         role: "admin",
       });
-      setCsrfToken(null);
+      writeCsrfToken(DEV_SECRET);
+      setCsrfToken(DEV_SECRET);
       setStatus("authenticated");
       return;
     }

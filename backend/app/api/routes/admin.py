@@ -115,3 +115,35 @@ async def list_users(db: AsyncSession = Depends(get_db)) -> list[UserRoleRespons
         UserRoleResponse(user_id=u.id, telegram_id=u.telegram_id, role=u.role.value)
         for u in users
     ]
+
+
+class TrainerInfo(BaseModel):
+    user_id: str
+    first_name: str | None
+    last_name: str | None
+    telegram_id: str | None
+
+
+@router.get(
+    "/trainers",
+    response_model=list[TrainerInfo],
+    dependencies=[Depends(require_admin)],
+    summary="List users with trainer role",
+)
+async def list_trainers(db: AsyncSession = Depends(get_db)) -> list[TrainerInfo]:
+    users = (
+        await db.scalars(
+            select(User)
+            .where(User.role == UserRole.TRAINER)
+            .order_by(User.first_name.asc(), User.last_name.asc())
+        )
+    ).all()
+    return [
+        TrainerInfo(
+            user_id=u.id,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            telegram_id=u.telegram_id,
+        )
+        for u in users
+    ]

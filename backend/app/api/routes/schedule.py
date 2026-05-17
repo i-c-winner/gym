@@ -1,14 +1,18 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import csrf_protect, get_current_user, require_admin, require_trainer
 from app.db.session import get_db
+from app.models.training_event import TrainingEvent, TrainingEventStatus
 from app.models.user import User, UserRole
 from app.schemas.schedule import (
     AttendanceRequest,
     EnrollmentRead,
+    EnrollmentWithEventRead,
     TrainingEventCreate,
     TrainingEventRead,
     TrainingEventUpdate,
@@ -18,6 +22,13 @@ from app.services.schedule_service import schedule_service
 from app.services.subscription_service import subscription_service
 
 router = APIRouter()
+
+
+class TrainerBasic(BaseModel):
+    user_id: str
+    first_name: str | None
+    last_name: str | None
+    telegram_id: str | None
 
 
 @router.get("/schedule", response_model=list[TrainingEventRead])
@@ -81,6 +92,41 @@ async def cancel_event(
     event = await schedule_service.get_event_or_404(db, event_id)
     await schedule_service.cancel_event(db, event, admin.id)
     await db.commit()
+
+
+@router.get("/schedule/trainers", response_model=list[TrainerBasic])
+async def list_event_trainers(
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[TrainerBasic]:
+    # Users with trainer role
+    role_ids = set(
+        (await db.scalars(select(User.id).where(User.role == UserRole.TRAINER))).all()
+    )
+    # Users who lead upcoming or scheduled events
+    event_ids = set(
+        (
+            await db.scalars(
+                select(TrainingEvent.trainer_id)
+                .where(TrainingEvent.status == TrainingEventStatus.SCHEDULED)
+                .distinct()
+            )
+        ).all()
+    )
+    all_ids = role_ids | event_ids
+    if not all_ids:
+        return []
+    users = (
+        await db.scalars(
+            select(User)
+            .where(User.id.in_(all_ids))
+            .order_by(User.first_name.asc(), User.last_name.asc())
+        )
+    ).all()
+    return [
+        TrainerBasic(user_id=u.id, first_name=u.first_name, last_name=u.last_name, telegram_id=u.telegram_id)
+        for u in users
+    ]
 
 
 @router.get("/schedule/{event_id}", response_model=TrainingEventRead)
@@ -176,6 +222,15 @@ async def confirm_attendance(
     )
     await db.commit()
     return [EnrollmentRead.model_validate(e) for e in results]
+
+
+@router.get("/me/enrollments", response_model=list[EnrollmentWithEventRead])
+async def my_enrollments(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[EnrollmentWithEventRead]:
+    enrollments = await schedule_service.get_user_enrollments(db, user.id)
+    return [EnrollmentWithEventRead.model_validate(e) for e in enrollments]
 
 
 @router.get("/me/subscriptions", response_model=list[SubscriptionRead])

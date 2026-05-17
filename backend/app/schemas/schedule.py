@@ -58,6 +58,20 @@ class EnrollmentRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EnrollmentWithEventRead(BaseModel):
+    id: str
+    event_id: str
+    subscription_id: str
+    status: str
+    notified_at: datetime | None
+    confirmed_at: datetime | None
+    extended: bool
+    created_at: datetime
+    event: TrainingEventRead
+
+    model_config = {"from_attributes": True}
+
+
 class AttendanceItem(BaseModel):
     enrollment_id: str
     attended: bool

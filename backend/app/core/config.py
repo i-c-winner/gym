@@ -97,6 +97,7 @@ class Settings:
     telegram_auth_max_age_seconds: int = env_int("TELEGRAM_AUTH_MAX_AGE_SECONDS", 60 * 60 * 24)
     session_cookie_domain: str | None = env_optional_str("SESSION_COOKIE_DOMAIN")
     admin_secret: str | None = env_optional_str("ADMIN_SECRET")
+    dev_secret: str | None = env_optional_str("DEV_SECRET")
     frontend_url: str = env_str("FRONTEND_URL", "http://localhost:3000")
     admin_telegram_ids: tuple[str, ...] = env_list("ADMIN_TELEGRAM_IDS", ())
     access_content_placeholder: str = env_str("ACCESS_CONTENT_PLACEHOLDER", "Protected resource content.")

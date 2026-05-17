@@ -13,11 +13,30 @@ from app.services.access_service import access_service
 from app.services.resource_service import resource_service
 from app.services.session_service import session_service
 
+DEV_USER_ID = "00000000-0000-0000-0000-000000000000"
+
+
+def _make_dev_user() -> User:
+    user = User()
+    user.id = DEV_USER_ID
+    user.role = UserRole.ADMIN
+    user.first_name = "Dev"
+    user.last_name = "Admin"
+    user.telephone = None
+    user.telegram_id = None
+    user.age = None
+    user.gender = None
+    return user
+
 
 async def get_current_session(
     db: AsyncSession = Depends(get_db),
     session_id: str | None = Cookie(default=None, alias=settings.session_cookie_name),
-) -> tuple[dict[str, Any], DbSession]:
+    x_dev_auth: str | None = Header(default=None, alias="X-Dev-Auth"),
+) -> tuple[dict[str, Any], DbSession | None]:
+    if settings.dev_secret and x_dev_auth == settings.dev_secret:
+        return {"user_id": DEV_USER_ID, "csrf_token": settings.dev_secret, "db_session_id": None, "_dev": True}, None
+
     try:
         session_data = await session_service.get_session_data(session_id)
     except RedisError as exc:
@@ -35,9 +54,11 @@ async def get_current_session(
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
-    current_session: tuple[dict[str, Any], DbSession] = Depends(get_current_session),
+    current_session: tuple[dict[str, Any], DbSession | None] = Depends(get_current_session),
 ) -> User:
     session_data, _ = current_session
+    if session_data.get("_dev"):
+        return _make_dev_user()
     user = await db.get(User, session_data["user_id"])
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
@@ -46,7 +67,7 @@ async def get_current_user(
 
 async def csrf_protect(
     request: Request,
-    current_session: tuple[dict[str, Any], DbSession] = Depends(get_current_session),
+    current_session: tuple[dict[str, Any], DbSession | None] = Depends(get_current_session),
     csrf_token: str | None = Header(default=None, alias=settings.csrf_header_name),
 ) -> None:
     if request.method in settings.csrf_safe_methods:
