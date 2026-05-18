@@ -206,6 +206,98 @@ export async function getUserCredits(): Promise<DiscountCredit[]> {
   return res ?? [];
 }
 
+// ── Absence requests (user) ───────────────────────────────────────────────────
+
+export type AbsenceRequest = {
+  id: string;
+  booking_id: string;
+  class_session_id: string | null;
+  user_id: string;
+  trainer_id: string;
+  status: "pending" | "confirmed" | "rejected";
+  note: string | null;
+  decided_at: string | null;
+};
+
+export async function getUserAbsenceRequests(): Promise<AbsenceRequest[]> {
+  const res = await request<AbsenceRequest[]>("/gym/absence-requests", { method: "GET" });
+  return res ?? [];
+}
+
+export async function createAbsenceRequest(
+  bookingId: string,
+  csrfToken: string,
+  note?: string,
+): Promise<AbsenceRequest> {
+  const res = await request<AbsenceRequest>("/gym/absence-requests", {
+    method: "POST",
+    body: JSON.stringify({ booking_id: bookingId, note: note ?? null }),
+    headers: { "X-CSRF-Token": csrfToken },
+  });
+  if (!res) throw new Error("Empty response");
+  return res;
+}
+
+// ── Trainer endpoints ─────────────────────────────────────────────────────────
+
+export type TrainerSession = {
+  id: string;
+  class_type_id: string;
+  trainer_id: string;
+  scheduled_at: string;
+  ends_at: string;
+  duration_minutes_snapshot: number;
+  max_participants_snapshot: number;
+  status: string;
+  available_spots: number | null;
+};
+
+export type SessionParticipant = {
+  id: string;
+  user_id: string;
+  class_session_id: string;
+  subscription_id: string;
+  status: string;
+  user_first_name: string | null;
+  user_last_name: string | null;
+  user_telephone: string | null;
+};
+
+export async function getTrainerPastSessions(): Promise<TrainerSession[]> {
+  const res = await request<TrainerSession[]>("/gym/trainer/sessions/past", { method: "GET" });
+  return res ?? [];
+}
+
+export async function getTrainerUpcomingSessions(): Promise<TrainerSession[]> {
+  const res = await request<TrainerSession[]>("/gym/trainer/sessions/upcoming", { method: "GET" });
+  return res ?? [];
+}
+
+export async function getSessionParticipants(sessionId: string): Promise<SessionParticipant[]> {
+  const res = await request<SessionParticipant[]>(
+    `/gym/trainer/sessions/${sessionId}/participants`,
+    { method: "GET" },
+  );
+  return res ?? [];
+}
+
+export async function markAttendance(
+  sessionId: string,
+  marks: Array<{ booking_id: string; attended: boolean }>,
+  csrfToken: string,
+): Promise<void> {
+  await request(`/gym/trainer/sessions/${sessionId}/attendance`, {
+    method: "POST",
+    body: JSON.stringify(marks),
+    headers: { "X-CSRF-Token": csrfToken },
+  });
+}
+
+export async function getTrainerAbsenceRequests(): Promise<AbsenceRequest[]> {
+  const res = await request<AbsenceRequest[]>("/gym/trainer/absence-requests", { method: "GET" });
+  return res ?? [];
+}
+
 export async function getUserClassTypes(): Promise<ClassType[]> {
   const res = await request<ClassType[]>("/gym/class-types", { method: "GET" });
   return res ?? [];

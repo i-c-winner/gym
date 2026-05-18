@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_trainer
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.absence_request import AbsenceDecisionIn, AbsenceRequestOut
+from app.schemas.absence_request import AbsenceRequestOut
 from app.schemas.booking import BookingOut, BookingWithUserOut
 from app.schemas.class_session import AttendanceMarkIn, ClassSessionOut
 from app.services.absence_service import absence_service
@@ -82,16 +82,11 @@ async def get_absence_queue(
     trainer: User = Depends(require_trainer),
 ) -> list[AbsenceRequestOut]:
     reqs = await absence_service.list_pending_for_trainer(db, trainer.id)
-    return [AbsenceRequestOut.model_validate(r) for r in reqs]
+    result = []
+    for req in reqs:
+        out = AbsenceRequestOut.model_validate(req)
+        if req.booking:
+            out.class_session_id = req.booking.class_session_id
+        result.append(out)
+    return result
 
-
-@router.post("/absence-requests/{request_id}/decide", response_model=AbsenceRequestOut)
-async def decide_absence(
-    request_id: str,
-    payload: AbsenceDecisionIn,
-    db: AsyncSession = Depends(get_db),
-    trainer: User = Depends(require_trainer),
-) -> AbsenceRequestOut:
-    req = await absence_service.decide(db, request_id, trainer.id, payload.approved)
-    await db.commit()
-    return AbsenceRequestOut.model_validate(req)

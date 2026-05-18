@@ -9,11 +9,9 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 class BookingStatus(StrEnum):
     CONFIRMED = "confirmed"
-    ABSENCE_PENDING = "absence_pending"   # request filed, spot freed
-    ABSENT = "absent"                      # trainer approved absence
-    NO_SPOT_AFTER_REJECTION = "no_spot_after_rejection"  # trainer rejected, spot gone
+    ABSENT = "absent"      # trainer confirmed: user warned + was absent → missed day counted
     CANCELLED = "cancelled"
-    NO_SHOW = "no_show"
+    NO_SHOW = "no_show"    # no warning, did not attend
     ATTENDED = "attended"
 
 

@@ -43,9 +43,12 @@ import {
   getUserCredits,
   getUserClassTypes,
   getUserSubscriptions,
+  getUserAbsenceRequests,
+  createAbsenceRequest,
   previewSubscription,
   type ScheduleEvent,
   type DiscountCredit,
+  type AbsenceRequest,
   type ClassType,
   type Subscription,
   type SubscriptionPreview,
@@ -136,36 +139,73 @@ function getPeriods(today: Date): PeriodInfo[] {
 // ── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_COLOR: Record<string, string> = {
-  confirmed:               "#6a7b6a",
-  absence_pending:         "#b89f74",
-  absent:                  "#9e9e9e",
-  no_spot_after_rejection: "#ef5350",
-  cancelled:               "#bdbdbd",
-  no_show:                 "#ef5350",
-  attended:                "#43a047",
+  confirmed:  "#6a7b6a",
+  warned:     "#b89f74", // confirmed + pending absence warning (client-side virtual status)
+  absent:     "#9e9e9e",
+  cancelled:  "#bdbdbd",
+  no_show:    "#ef5350",
+  attended:   "#43a047",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  confirmed:               "Записан",
-  absence_pending:         "Пропуск рассматривается",
-  absent:                  "Отсутствовал",
-  no_spot_after_rejection: "Место занято",
-  cancelled:               "Отменено",
-  no_show:                 "Не явился",
-  attended:                "Посетил",
+  confirmed:  "Записан",
+  warned:     "Предупреждение отправлено",
+  absent:     "Отсутствовал",
+  cancelled:  "Отменено",
+  no_show:    "Не явился",
+  attended:   "Посетил",
 };
 
 // ── Event popover ─────────────────────────────────────────────────────────────
 
 type PopoverState = { anchor: Element; event: ScheduleEvent } | null;
 
-function EventPopover({ state, onClose }: { state: PopoverState; onClose: () => void }) {
+function EventPopover({
+  state,
+  onClose,
+  absenceRequests,
+  csrfToken,
+  onAbsenceCreated,
+}: {
+  state: PopoverState;
+  onClose: () => void;
+  absenceRequests: AbsenceRequest[];
+  csrfToken: string | null;
+  onAbsenceCreated: () => void;
+}) {
+  const [warning, setWarning] = useState<"idle" | "loading" | "done" | "error">("idle");
+
   if (!state) return null;
   const { event } = state;
   const start = new Date(event.scheduled_at);
   const end = new Date(event.ends_at);
+  const now = new Date();
+
+  const pendingRequest = absenceRequests.find(
+    (r) => r.booking_id === event.booking_id && r.status === "pending",
+  );
+  const isFuture = start > now;
+  const canWarn =
+    event.booking_status === "confirmed" && isFuture && !pendingRequest && csrfToken;
+
+  const displayStatus = pendingRequest ? "warned" : event.booking_status;
+
   const fmtFull = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+
+  const handleWarn = async () => {
+    if (!csrfToken) return;
+    setWarning("loading");
+    try {
+      await createAbsenceRequest(event.booking_id, csrfToken);
+      setWarning("done");
+      onAbsenceCreated();
+      setTimeout(onClose, 1200);
+    } catch {
+      setWarning("error");
+    }
+  };
+
   return (
     <Popover
       open
@@ -173,7 +213,7 @@ function EventPopover({ state, onClose }: { state: PopoverState; onClose: () => 
       onClose={onClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
       transformOrigin={{ vertical: "top", horizontal: "left" }}
-      slotProps={{ paper: { sx: { borderRadius: 3, p: 2, maxWidth: 280, boxShadow: "0 8px 24px rgba(62,56,47,0.12)" } } }}
+      slotProps={{ paper: { sx: { borderRadius: 3, p: 2, maxWidth: 300, boxShadow: "0 8px 24px rgba(62,56,47,0.12)" } } }}
     >
       <Stack spacing={1.5}>
         <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "text.primary" }}>
@@ -192,11 +232,11 @@ function EventPopover({ state, onClose }: { state: PopoverState; onClose: () => 
           </Typography>
         </Stack>
         <Chip
-          label={STATUS_LABEL[event.booking_status] ?? event.booking_status}
+          label={STATUS_LABEL[displayStatus] ?? displayStatus}
           size="small"
           sx={{
             alignSelf: "flex-start",
-            bgcolor: STATUS_COLOR[event.booking_status] ?? "#9e9e9e",
+            bgcolor: STATUS_COLOR[displayStatus] ?? "#9e9e9e",
             color: "#fff",
             fontWeight: 600,
             fontSize: "0.75rem",
@@ -207,6 +247,37 @@ function EventPopover({ state, onClose }: { state: PopoverState; onClose: () => 
             {event.class_type_description}
           </Typography>
         )}
+
+        {/* Absence warning action */}
+        {warning === "done" ? (
+          <Typography sx={{ fontSize: "0.8125rem", color: "secondary.main", fontWeight: 600 }}>
+            Тренер уведомлён
+          </Typography>
+        ) : warning === "error" ? (
+          <Typography sx={{ fontSize: "0.8125rem", color: "error.main" }}>
+            Ошибка. Попробуйте ещё раз.
+          </Typography>
+        ) : canWarn ? (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => void handleWarn()}
+            disabled={warning === "loading"}
+            sx={{
+              borderRadius: 2,
+              borderColor: "#b89f74",
+              color: "#b89f74",
+              fontSize: "0.8125rem",
+              "&:hover": { borderColor: "#a08060", bgcolor: "rgba(184,159,116,0.06)" },
+            }}
+          >
+            {warning === "loading" ? (
+              <CircularProgress size={14} sx={{ color: "#b89f74" }} />
+            ) : (
+              "Предупредить о пропуске"
+            )}
+          </Button>
+        ) : null}
       </Stack>
     </Popover>
   );
@@ -435,11 +506,12 @@ function PeriodCard({
 
 function Schedule() {
   const router = useRouter();
-  const { status, logout } = useAuth();
+  const { status, logout, csrfToken } = useAuth();
   const { displayName, profileSubtitle } = useUserDisplay();
   const navItems = useAccountNavItems("/account/schedule");
 
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [absenceRequests, setAbsenceRequests] = useState<AbsenceRequest[]>([]);
   const [credits, setCredits] = useState<DiscountCredit[]>([]);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [existingSubs, setExistingSubs] = useState<Subscription[]>([]);
@@ -454,13 +526,15 @@ function Schedule() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [evts, creds, cts, subs] = await Promise.all([
+      const [evts, absReqs, creds, cts, subs] = await Promise.all([
         getUserSchedule(),
+        getUserAbsenceRequests(),
         getUserCredits(),
         getUserClassTypes(),
         getUserSubscriptions(),
       ]);
       setEvents(evts);
+      setAbsenceRequests(absReqs);
       setCredits(creds);
       setClassTypes(cts);
       setExistingSubs(subs);
@@ -477,16 +551,24 @@ function Schedule() {
     void loadAll();
   }, [status, router, loadAll]);
 
-  const fcEvents: EventInput[] = events.map((e) => ({
-    id: e.booking_id,
-    title: e.class_type_title,
-    start: e.scheduled_at,
-    end: e.ends_at,
-    backgroundColor: STATUS_COLOR[e.booking_status] ?? "#9e9e9e",
-    borderColor: "transparent",
-    textColor: "#fff",
-    extendedProps: e,
-  }));
+  const pendingWarningIds = new Set(
+    absenceRequests.filter((r) => r.status === "pending").map((r) => r.booking_id),
+  );
+
+  const fcEvents: EventInput[] = events.map((e) => {
+    const hasWarn = pendingWarningIds.has(e.booking_id) && e.booking_status === "confirmed";
+    const colorKey = hasWarn ? "warned" : e.booking_status;
+    return {
+      id: e.booking_id,
+      title: e.class_type_title,
+      start: e.scheduled_at,
+      end: e.ends_at,
+      backgroundColor: STATUS_COLOR[colorKey] ?? "#9e9e9e",
+      borderColor: "transparent",
+      textColor: "#fff",
+      extendedProps: e,
+    };
+  });
 
   const handleEventClick = useCallback((info: EventClickArg) => {
     setPopover({ anchor: info.el, event: info.event.extendedProps as ScheduleEvent });
@@ -545,18 +627,6 @@ function Schedule() {
                 Подписка успешно оформлена! Занятия добавлены в календарь.
               </Alert>
             )}
-
-            {/* Status legend */}
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-              {Object.entries(STATUS_LABEL).map(([key, label]) => (
-                <Chip
-                  key={key}
-                  label={label}
-                  size="small"
-                  sx={{ bgcolor: STATUS_COLOR[key], color: "#fff", fontWeight: 500, fontSize: "0.75rem" }}
-                />
-              ))}
-            </Stack>
 
             {/* Calendar */}
             <CardShell>
@@ -682,7 +752,13 @@ function Schedule() {
         </Grid>
       </Grid>
 
-      <EventPopover state={popover} onClose={() => setPopover(null)} />
+      <EventPopover
+        state={popover}
+        onClose={() => setPopover(null)}
+        absenceRequests={absenceRequests}
+        csrfToken={csrfToken}
+        onAbsenceCreated={() => void loadAll()}
+      />
 
       {buyPeriod && (
         <PurchaseDialog

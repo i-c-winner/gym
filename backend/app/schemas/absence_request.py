@@ -10,15 +10,12 @@ class AbsenceRequestCreateIn(BaseModel):
     note: str | None = None
 
 
-class AbsenceDecisionIn(BaseModel):
-    approved: bool
-
-
 class AbsenceRequestOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     booking_id: str
+    class_session_id: str | None = None  # populated from booking relation where available
     user_id: str
     trainer_id: str
     status: AbsenceRequestStatus

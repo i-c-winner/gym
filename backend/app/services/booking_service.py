@@ -43,7 +43,7 @@ class BookingService:
         if not (sub.period_start <= session_date <= sub.period_end):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session date is outside subscription period")
 
-        # Check capacity (count only CONFIRMED bookings; absence_pending has freed the spot)
+        # Check capacity against confirmed bookings
         confirmed_count = await db.scalar(
             select(func.count()).select_from(Booking).where(
                 Booking.class_session_id == class_session_id,
@@ -100,6 +100,8 @@ class BookingService:
     async def mark_attendance(
         self, db: AsyncSession, booking_id: str, attended: bool, trainer_id: str
     ) -> Booking:
+        from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
+
         result = await db.execute(
             select(Booking).options(selectinload(Booking.class_session)).where(Booking.id == booking_id)
         )
@@ -111,11 +113,29 @@ class BookingService:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your session")
         if sess.status != ClassSessionStatus.COMPLETED:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session not completed yet")
+
         if booking.status not in (BookingStatus.CONFIRMED, BookingStatus.NO_SHOW):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot mark attendance for this booking status")
 
         old_status = booking.status
-        booking.status = BookingStatus.ATTENDED if attended else BookingStatus.NO_SHOW
+        now = datetime.now(UTC)
+
+        # Check for a pending absence warning from the user
+        absence_req = await db.scalar(
+            select(AbsenceRequest).where(
+                AbsenceRequest.booking_id == booking_id,
+                AbsenceRequest.status == AbsenceRequestStatus.PENDING,
+            )
+        )
+
+        if absence_req:
+            absence_req.decided_at = now
+            absence_req.status = AbsenceRequestStatus.REJECTED if attended else AbsenceRequestStatus.CONFIRMED
+            # User warned + confirmed absent → ABSENT (counts toward missed days)
+            booking.status = BookingStatus.ATTENDED if attended else BookingStatus.ABSENT
+        else:
+            # No warning — regular attendance mark
+            booking.status = BookingStatus.ATTENDED if attended else BookingStatus.NO_SHOW
 
         await audit_log_service.log(
             db,

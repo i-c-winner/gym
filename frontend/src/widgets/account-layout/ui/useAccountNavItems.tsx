@@ -9,6 +9,7 @@ import FitnessCenterOutlinedIcon from "@mui/icons-material/FitnessCenterOutlined
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
 import EditCalendarOutlinedIcon from "@mui/icons-material/EditCalendarOutlined";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import { useAuth } from "@/features/auth/model/auth-context";
 import type { NavItem } from "./AccountSidebar";
 
@@ -16,6 +17,7 @@ function useAccountNavItems(activeHref: string): NavItem[] {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isTrainer = user?.role === "trainer" || user?.role === "admin";
 
   return useMemo(
     () => [
@@ -25,6 +27,16 @@ function useAccountNavItems(activeHref: string): NavItem[] {
       { label: t("accountMyPrograms.navigation.workouts"), icon: <FitnessCenterOutlinedIcon fontSize="small" />, href: "/account/schedule", active: activeHref === "/account/schedule" },
       { label: t("accountMyPrograms.navigation.calendar"), icon: <CalendarMonthOutlinedIcon fontSize="small" />, href: "/main" },
       { label: t("accountMyPrograms.navigation.favorites"), icon: <FavoriteBorderOutlinedIcon fontSize="small" />, href: "/main" },
+      ...(isTrainer
+        ? [
+            {
+              label: "Явка участников",
+              icon: <AssignmentTurnedInOutlinedIcon fontSize="small" />,
+              href: "/account/trainer",
+              active: activeHref === "/account/trainer",
+            },
+          ]
+        : []),
       ...(isAdmin
         ? [
             {

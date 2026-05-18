@@ -9,11 +9,9 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class AbsenceRequestStatus(StrEnum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    AUTO_APPROVED = "auto_approved"
-    AUTO_REJECTED = "auto_rejected"
+    PENDING = "pending"      # user warned, awaiting trainer confirmation after session
+    CONFIRMED = "confirmed"  # trainer confirmed: user was absent → missed day counted
+    REJECTED = "rejected"    # trainer confirmed: user actually attended
 
 
 class AbsenceRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):

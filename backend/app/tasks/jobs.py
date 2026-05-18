@@ -86,11 +86,9 @@ async def _close_completed_sessions() -> int:
     """Mark sessions whose end time has passed as COMPLETED and default bookings."""
     from app.models.booking import Booking, BookingStatus
     from app.models.class_session import ClassSession, ClassSessionStatus
-    from app.services.audit_log_service import audit_log_service
 
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as db:
-        # Find sessions that ended but are still SCHEDULED
         result = await db.execute(
             select(ClassSession).where(
                 ClassSession.status == ClassSessionStatus.SCHEDULED,
@@ -102,11 +100,20 @@ async def _close_completed_sessions() -> int:
         for sess in sessions:
             sess.status = ClassSessionStatus.COMPLETED
             count += 1
-            # Default unresolved CONFIRMED bookings to NO_SHOW
+            # CONFIRMED without a pending absence warning → NO_SHOW
+            # (Bookings with pending warnings are resolved by timeout_absence_requests_task)
+            from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
+            from sqlalchemy import not_, exists
             bookings_result = await db.execute(
                 select(Booking).where(
                     Booking.class_session_id == sess.id,
                     Booking.status == BookingStatus.CONFIRMED,
+                    not_(
+                        exists().where(
+                            AbsenceRequest.booking_id == Booking.id,
+                            AbsenceRequest.status == AbsenceRequestStatus.PENDING,
+                        )
+                    ),
                 )
             )
             for booking in bookings_result.scalars():
@@ -122,7 +129,7 @@ def close_completed_sessions_task() -> int:
 
 
 async def _timeout_absence_requests() -> int:
-    """Process pending absence requests whose session has already started."""
+    """Auto-resolve pending absence requests after session has ended."""
     from app.core.config import settings
     from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
     from app.models.booking import Booking, BookingStatus
@@ -130,14 +137,14 @@ async def _timeout_absence_requests() -> int:
 
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as db:
-        # Find pending requests where the session has already started
+        # Only process requests where session has already ended (trainer had time to confirm)
         result = await db.execute(
             select(AbsenceRequest)
             .join(Booking, Booking.id == AbsenceRequest.booking_id)
             .join(ClassSession, ClassSession.id == Booking.class_session_id)
             .where(
                 AbsenceRequest.status == AbsenceRequestStatus.PENDING,
-                ClassSession.scheduled_at <= now,
+                ClassSession.ends_at <= now,
             )
         )
         reqs = result.scalars().all()
@@ -147,35 +154,12 @@ async def _timeout_absence_requests() -> int:
             booking = await db.get(Booking, req.booking_id)
             req.decided_at = now
             if policy == "auto_approve":
-                req.status = AbsenceRequestStatus.AUTO_APPROVED
-                if booking:
+                req.status = AbsenceRequestStatus.CONFIRMED
+                if booking and booking.status == BookingStatus.CONFIRMED:
                     booking.status = BookingStatus.ABSENT
-                # Issue credit
-                from app.models.class_session import ClassSession as CS
-                from app.models.discount_credit import DiscountCredit
-                b_sess = await db.get(CS, booking.class_session_id) if booking else None
-                if b_sess:
-                    from app.models.class_type import ClassType
-                    ct = await db.get(ClassType, b_sess.class_type_id)
-                    amount = ct.base_rate_per_day if ct else b_sess.base_rate_snapshot
-                    # Check no duplicate credit
-                    existing = await db.scalar(
-                        select(DiscountCredit).where(
-                            DiscountCredit.source_absence_request_id == req.id
-                        )
-                    )
-                    if not existing:
-                        credit = DiscountCredit(
-                            user_id=req.user_id,
-                            class_type_id=b_sess.class_type_id,
-                            source_absence_request_id=req.id,
-                            amount=amount,
-                            is_used=False,
-                        )
-                        db.add(credit)
-            else:  # auto_reject
-                req.status = AbsenceRequestStatus.AUTO_REJECTED
-                if booking and booking.status == BookingStatus.ABSENCE_PENDING:
+            else:
+                req.status = AbsenceRequestStatus.REJECTED
+                if booking and booking.status == BookingStatus.CONFIRMED:
                     booking.status = BookingStatus.NO_SHOW
             count += 1
         await db.commit()

@@ -263,28 +263,28 @@ async def test_webhook_idempotency(db_session: AsyncSession):
     assert bcount == sessions_in_period
 
 
-# ─── Full lifecycle: absence → credit → applied to next subscription ──────────
+# ─── Absence warning → trainer confirms after session → missed day counted ────
 
 @pytest.mark.asyncio
-async def test_full_absence_credit_lifecycle(db_session: AsyncSession):
+async def test_absence_warning_and_confirmation(db_session: AsyncSession):
     """
     1. User activates subscription → sessions auto-booked.
-    2. User files absence on one session.
-    3. Trainer approves → credit issued.
-    4. User buys next subscription → credit automatically applied.
+    2. User warns about absence → booking stays CONFIRMED (spot is NOT freed).
+    3. Session ends, trainer marks attendance → booking ABSENT, request CONFIRMED.
+    4. Missed day is visible as ABSENT booking.
     """
+    from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
+    from app.services.booking_service import booking_service
+
     trainer = await _make_user(db_session, UserRole.TRAINER)
     user = await _make_user(db_session)
     ct, sched = await _make_class_type(db_session, trainer.id, base_rate=Decimal("300"))
 
-    # Create a session within current month
-    today = datetime.now(UTC).date()
-    end_of_month = today.replace(day=_cal.monthrange(today.year, today.month)[1])
     sess = await _make_session_in_period(db_session, ct, sched, days_from_now=5)
     await db_session.commit()
 
-    # Step 1: subscribe (current month) → auto-books the session
-    sub1 = await _subscribe_and_activate(db_session, user, ct, SubscriptionPeriod.CURRENT_MONTH_REST)
+    # Step 1: subscribe → auto-books the session
+    await _subscribe_and_activate(db_session, user, ct, SubscriptionPeriod.CURRENT_MONTH_REST)
     await db_session.commit()
 
     booking = await db_session.scalar(
@@ -296,68 +296,50 @@ async def test_full_absence_credit_lifecycle(db_session: AsyncSession):
     assert booking is not None
     assert booking.status == BookingStatus.CONFIRMED
 
-    # Step 2: absence request
-    req = await absence_service.create_request(db_session, user.id, booking.id, note=None)
+    # Step 2: user warns — booking stays CONFIRMED, spot is NOT freed
+    req = await absence_service.create_request(db_session, user.id, booking.id, note="will miss it")
     await db_session.commit()
     await db_session.refresh(booking)
-    assert booking.status == BookingStatus.ABSENCE_PENDING
+    assert booking.status == BookingStatus.CONFIRMED
+    assert req.status == AbsenceRequestStatus.PENDING
 
-    # Step 3: trainer approves → credit
-    await absence_service.decide(db_session, req.id, trainer.id, approved=True)
+    # Step 3: session ends → trainer marks attendance (attended=False)
+    sess.status = ClassSessionStatus.COMPLETED
+    sess.ends_at = datetime.now(UTC) - timedelta(minutes=5)
+    await db_session.flush()
+
+    updated = await booking_service.mark_attendance(db_session, booking.id, attended=False, trainer_id=trainer.id)
     await db_session.commit()
 
-    credit = await db_session.scalar(
-        select(DiscountCredit).where(DiscountCredit.user_id == user.id)
+    assert updated.status == BookingStatus.ABSENT
+
+    await db_session.refresh(req)
+    assert req.status == AbsenceRequestStatus.CONFIRMED
+
+    # Step 4: missed day is countable via ABSENT bookings
+    from sqlalchemy import func
+    missed = await db_session.scalar(
+        select(func.count()).select_from(Booking).where(
+            Booking.user_id == user.id,
+            Booking.status == BookingStatus.ABSENT,
+        )
     )
-    assert credit is not None
-    assert credit.amount == ct.base_rate_per_day
-    assert not credit.is_used
-
-    # Step 4: buy next month subscription → credit applied
-    sub2 = await subscription_service.create(
-        db_session, user, ct.id, SubscriptionPeriod.NEXT_MONTH,
-        provider="mock", provider_txn_id=str(uuid4()),
-    )
-    await db_session.commit()
-
-    assert sub2.discount_amount == credit.amount
-    assert sub2.total_amount == sub2.gross_amount - credit.amount
-
-    # Activate to consume the credit
-    txn2 = str(uuid4())
-    sub2_for_activate = await subscription_service.create(
-        db_session, user, ct.id, SubscriptionPeriod.NEXT_MONTH,
-        provider="mock", provider_txn_id=txn2,
-    ) if False else sub2  # sub2 already created above, just activate it
-
-    # Re-create with proper txn to activate
-    # (sub2 above was created without activating; activate it now)
-    from app.models.subscription_payment import SubscriptionPayment as SP
-    pay = await db_session.scalar(select(SP).where(SP.subscription_id == sub2.id))
-    pay.status = PaymentStatus.SUCCEEDED
-    sub2.status = SubscriptionStatus.ACTIVE
-    sub2.activated_at = datetime.now(UTC)
-    # Mark credits used
-    credit.is_used = True
-    credit.used_at = datetime.now(UTC)
-    credit.applied_to_subscription_id = sub2.id
-    await db_session.commit()
-
-    await db_session.refresh(credit)
-    assert credit.is_used
-    assert credit.applied_to_subscription_id == sub2.id
+    assert missed == 1
 
 
 @pytest.mark.asyncio
-async def test_trainer_approve_issues_credit(db_session: AsyncSession):
-    """Credit is issued exactly once when trainer approves absence."""
+async def test_trainer_confirms_absent(db_session: AsyncSession):
+    """User warned + trainer marks not attended → booking ABSENT, request CONFIRMED."""
+    from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
+    from app.services.booking_service import booking_service
+
     trainer = await _make_user(db_session, UserRole.TRAINER)
     user = await _make_user(db_session)
     ct, sched = await _make_class_type(db_session, trainer.id, base_rate=Decimal("500"))
     sess = await _make_session_in_period(db_session, ct, sched, days_from_now=4)
     await db_session.commit()
 
-    sub = await _subscribe_and_activate(db_session, user, ct)
+    await _subscribe_and_activate(db_session, user, ct)
     await db_session.commit()
 
     booking = await db_session.scalar(
@@ -367,30 +349,35 @@ async def test_trainer_approve_issues_credit(db_session: AsyncSession):
 
     req = await absence_service.create_request(db_session, user.id, booking.id, None)
     await db_session.commit()
+    await db_session.refresh(booking)
+    assert booking.status == BookingStatus.CONFIRMED  # spot not freed
 
-    await absence_service.decide(db_session, req.id, trainer.id, approved=True)
+    sess.status = ClassSessionStatus.COMPLETED
+    sess.ends_at = datetime.now(UTC) - timedelta(minutes=1)
+    await db_session.flush()
+
+    await booking_service.mark_attendance(db_session, booking.id, attended=False, trainer_id=trainer.id)
     await db_session.commit()
 
-    from sqlalchemy import func
-    credit_count = await db_session.scalar(
-        select(func.count()).select_from(DiscountCredit).where(DiscountCredit.user_id == user.id)
-    )
-    assert credit_count == 1
-
-    credit = await db_session.scalar(select(DiscountCredit).where(DiscountCredit.user_id == user.id))
-    assert credit.amount == Decimal("500")
+    await db_session.refresh(booking)
+    await db_session.refresh(req)
+    assert booking.status == BookingStatus.ABSENT
+    assert req.status == AbsenceRequestStatus.CONFIRMED
 
 
 @pytest.mark.asyncio
-async def test_trainer_reject_no_credit(db_session: AsyncSession):
-    """No credit issued when trainer rejects absence."""
+async def test_trainer_confirms_attended_despite_warning(db_session: AsyncSession):
+    """User warned but actually showed up → booking ATTENDED, request REJECTED."""
+    from app.models.absence_request import AbsenceRequest, AbsenceRequestStatus
+    from app.services.booking_service import booking_service
+
     trainer = await _make_user(db_session, UserRole.TRAINER)
     user = await _make_user(db_session)
     ct, sched = await _make_class_type(db_session, trainer.id)
     sess = await _make_session_in_period(db_session, ct, sched)
     await db_session.commit()
 
-    sub = await _subscribe_and_activate(db_session, user, ct)
+    await _subscribe_and_activate(db_session, user, ct)
     await db_session.commit()
 
     booking = await db_session.scalar(
@@ -399,14 +386,17 @@ async def test_trainer_reject_no_credit(db_session: AsyncSession):
     req = await absence_service.create_request(db_session, user.id, booking.id, None)
     await db_session.commit()
 
-    await absence_service.decide(db_session, req.id, trainer.id, approved=False)
+    sess.status = ClassSessionStatus.COMPLETED
+    sess.ends_at = datetime.now(UTC) - timedelta(minutes=1)
+    await db_session.flush()
+
+    await booking_service.mark_attendance(db_session, booking.id, attended=True, trainer_id=trainer.id)
     await db_session.commit()
 
-    from sqlalchemy import func
-    credit_count = await db_session.scalar(
-        select(func.count()).select_from(DiscountCredit).where(DiscountCredit.user_id == user.id)
-    )
-    assert credit_count == 0
+    await db_session.refresh(booking)
+    await db_session.refresh(req)
+    assert booking.status == BookingStatus.ATTENDED
+    assert req.status == AbsenceRequestStatus.REJECTED
 
 
 # ─── Race condition test (PostgreSQL only) ────────────────────────────────────
