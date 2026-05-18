@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -15,13 +15,6 @@ import {
 } from "@mui/material";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import { useAuth } from "@/features/auth/model/auth-context";
-import type { TelegramUser } from "@/features/auth/model/auth-context";
-
-declare global {
-  interface Window {
-    __onTelegramAuth?: (user: TelegramUser) => void;
-  }
-}
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -33,13 +26,13 @@ function formatPhone(raw: string): string {
 
 export function PlaceholderPage() {
   const router = useRouter();
-  const { status, isAuthenticated, authenticateWithTelegram, authenticateWithPhone } = useAuth();
-  const widgetRef = useRef<HTMLDivElement | null>(null);
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+  const { status, isAuthenticated, authenticateWithPhone } = useAuth();
+  const botId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID;
 
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [telegramIframeUrl, setTelegramIframeUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated" && isAuthenticated) {
@@ -47,34 +40,20 @@ export function PlaceholderPage() {
     }
   }, [isAuthenticated, router, status]);
 
+  // Build iframe URL client-side so window.location.origin is available
   useEffect(() => {
-    if (!widgetRef.current || !botUsername) return;
-
-    window.__onTelegramAuth = (telegramUser: TelegramUser) => {
-      setLoading(true);
-      void authenticateWithTelegram(telegramUser)
-        .then(() => router.replace("/account"))
-        .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Ошибка входа через Telegram");
-          setLoading(false);
-        });
-    };
-
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.async = true;
-    script.setAttribute("data-telegram-login", botUsername);
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-radius", "10");
-    script.setAttribute("data-request-access", "write");
-    script.setAttribute("data-userpic", "false");
-    script.setAttribute("data-lang", "ru");
-    script.setAttribute("data-onauth", "window.__onTelegramAuth(user)");
-    widgetRef.current.innerHTML = "";
-    widgetRef.current.appendChild(script);
-
-    return () => { delete window.__onTelegramAuth; };
-  }, [authenticateWithTelegram, botUsername, router]);
+    if (!botId) return;
+    const origin = window.location.origin;
+    const returnTo = `${origin}/auth/telegram`;
+    setTelegramIframeUrl(
+      `https://oauth.telegram.org/auth` +
+      `?bot_id=${botId}` +
+      `&origin=${encodeURIComponent(origin)}` +
+      `&request_access=write` +
+      `&return_to=${encodeURIComponent(returnTo)}` +
+      `&embed=1`,
+    );
+  }, [botId]);
 
   const handlePhoneLogin = async () => {
     const formatted = formatPhone(phone);
@@ -150,7 +129,7 @@ export function PlaceholderPage() {
             Вход
           </Typography>
           <Typography sx={{ fontSize: "0.9375rem", color: "#5f584f", mb: 3 }}>
-            {botUsername
+            {telegramIframeUrl
               ? "Введите номер телефона или войдите через Telegram"
               : "Введите номер телефона"}
           </Typography>
@@ -200,17 +179,22 @@ export function PlaceholderPage() {
             </Button>
           </Stack>
 
-          {botUsername && (
+          {telegramIframeUrl && (
             <>
               <Divider sx={{ my: 3 }}>
                 <Typography sx={{ fontSize: "0.8125rem", color: "#8a8278", px: 1 }}>
                   или
                 </Typography>
               </Divider>
-              <Box
-                ref={widgetRef}
-                sx={{ textAlign: "center", lineHeight: 0, overflow: "visible" }}
-              />
+              <Box sx={{ display: "flex", justifyContent: "center" }}>
+                <iframe
+                  src={telegramIframeUrl}
+                  frameBorder="0"
+                  scrolling="no"
+                  style={{ width: 220, height: 44, display: "block" }}
+                  title="Войти через Telegram"
+                />
+              </Box>
             </>
           )}
         </Box>
