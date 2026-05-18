@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import TelegramIcon from "@mui/icons-material/Telegram";
 import { useAuth } from "@/features/auth/model/auth-context";
 import type { TelegramUser } from "@/features/auth/model/auth-context";
 
@@ -31,15 +32,40 @@ function formatPhone(raw: string): string {
   return raw.trim();
 }
 
+function buildTelegramOAuthUrl(): string | null {
+  const botId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID;
+  if (!botId || typeof window === "undefined") return null;
+  const origin = window.location.origin;
+  const returnTo = `${origin}/auth/telegram`;
+  return (
+    `https://oauth.telegram.org/auth` +
+    `?bot_id=${botId}` +
+    `&origin=${encodeURIComponent(origin)}` +
+    `&request_access=write` +
+    `&return_to=${encodeURIComponent(returnTo)}`
+  );
+}
+
 export function PlaceholderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, isAuthenticated, authenticateWithTelegram, authenticateWithPhone } = useAuth();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+  const botId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID;
 
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [widgetFailed, setWidgetFailed] = useState(false);
+
+  // Show error from callback redirect
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (err === "telegram_invalid" || err === "telegram_auth") {
+      setError("Не удалось войти через Telegram. Попробуйте ещё раз.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (status === "authenticated" && isAuthenticated) {
@@ -47,6 +73,7 @@ export function PlaceholderPage() {
     }
   }, [isAuthenticated, router, status]);
 
+  // Load Telegram inline widget; detect failure after 4s
   useEffect(() => {
     if (!widgetRef.current || !botUsername) return;
 
@@ -73,7 +100,16 @@ export function PlaceholderPage() {
     widgetRef.current.innerHTML = "";
     widgetRef.current.appendChild(script);
 
-    return () => { delete window.__onTelegramAuth; };
+    // Detect if widget rendered: Telegram appends an <iframe> inside the container
+    const timer = setTimeout(() => {
+      const hasIframe = widgetRef.current?.querySelector("iframe");
+      if (!hasIframe) setWidgetFailed(true);
+    }, 4000);
+
+    return () => {
+      clearTimeout(timer);
+      delete window.__onTelegramAuth;
+    };
   }, [authenticateWithTelegram, botUsername, router]);
 
   const handlePhoneLogin = async () => {
@@ -94,6 +130,11 @@ export function PlaceholderPage() {
     }
   };
 
+  const handleTelegramRedirect = () => {
+    const url = buildTelegramOAuthUrl();
+    if (url) window.location.href = url;
+  };
+
   if (status === "loading") {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
@@ -101,6 +142,8 @@ export function PlaceholderPage() {
       </Box>
     );
   }
+
+  const showTelegramSection = !!(botUsername || botId);
 
   return (
     <Box
@@ -152,7 +195,9 @@ export function PlaceholderPage() {
             Вход
           </Typography>
           <Typography sx={{ fontSize: "0.9375rem", color: "#5f584f", mb: 3 }}>
-            Введите номер телефона или войдите через Telegram
+            {showTelegramSection
+              ? "Введите номер телефона или войдите через Telegram"
+              : "Введите номер телефона"}
           </Typography>
 
           {error && (
@@ -200,17 +245,45 @@ export function PlaceholderPage() {
             </Button>
           </Stack>
 
-          {botUsername && (
+          {showTelegramSection && (
             <>
               <Divider sx={{ my: 3 }}>
                 <Typography sx={{ fontSize: "0.8125rem", color: "#8a8278", px: 1 }}>
-                  или войдите через Telegram
+                  или
                 </Typography>
               </Divider>
+
+              {/* Inline widget (works when domain is configured in BotFather) */}
               <Box
                 ref={widgetRef}
-                sx={{ display: "flex", justifyContent: "center", minHeight: 54 }}
+                sx={{
+                  display: widgetFailed ? "none" : "flex",
+                  justifyContent: "center",
+                  minHeight: 54,
+                }}
               />
+
+              {/* Fallback button (shown when widget doesn't load) */}
+              {widgetFailed && (
+                <Button
+                  onClick={handleTelegramRedirect}
+                  fullWidth
+                  disabled={loading}
+                  startIcon={<TelegramIcon />}
+                  sx={{
+                    minHeight: 52,
+                    borderRadius: 3,
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    bgcolor: "#2AABEE",
+                    color: "#fff",
+                    "&:hover": { bgcolor: "#1a9bde" },
+                    "&:disabled": { opacity: 0.55 },
+                  }}
+                >
+                  Войти через Telegram
+                </Button>
+              )}
             </>
           )}
         </Box>

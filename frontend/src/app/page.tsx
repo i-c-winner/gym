@@ -1,6 +1,10 @@
-import {PlaceholderPage} from "@/views/app/ui/PlaceholderPage";
-
+import { Suspense } from "react";
+import { PlaceholderPage } from "@/views/app/ui/PlaceholderPage";
 
 export default function Page() {
-  return <PlaceholderPage />;
+  return (
+    <Suspense>
+      <PlaceholderPage />
+    </Suspense>
+  );
 }
