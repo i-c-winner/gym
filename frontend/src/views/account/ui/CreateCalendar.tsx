@@ -154,12 +154,12 @@ function ClassTypeCard({
           </Box>
           <Stack direction="row" spacing={0.5}>
             <Tooltip title="Редактировать">
-              <IconButton size="small" onClick={onEdit}>
+              <IconButton onClick={onEdit} sx={{ width: 44, height: 44 }}>
                 <EditOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title={ct.is_active ? "Деактивировать" : "Активировать"}>
-              <IconButton size="small" onClick={onToggle} color={ct.is_active ? "default" : "primary"}>
+              <IconButton onClick={onToggle} color={ct.is_active ? "default" : "primary"} sx={{ width: 44, height: 44 }}>
                 <DeleteOutlineRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -220,7 +220,7 @@ function ScheduleEditor({
       </Typography>
       <Stack spacing={1}>
         {DAY_LABELS.map((label, i) => (
-          <Stack key={label} direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+          <Stack key={label} direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: { xs: "wrap", sm: "nowrap" } }}>
             <Chip
               label={label}
               onClick={() => toggle(i)}
@@ -242,7 +242,7 @@ function ScheduleEditor({
                 type="time"
                 value={schedule[i].time}
                 onChange={(e) => setTime(i, e.target.value)}
-                sx={{ width: 130 }}
+                sx={{ width: { xs: "100%", sm: 130 } }}
                 slotProps={{ htmlInput: { step: 300 } }}
               />
             )}
@@ -652,11 +652,12 @@ function CreateCalendar() {
                         <Divider />
 
                         {/* Actions */}
-                        <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
+                        <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={2} sx={{ justifyContent: "flex-end" }}>
                           {editingId && (
                             <Button
                               onClick={startCreating}
-                              sx={{ borderRadius: 3, color: "text.secondary" }}
+                              fullWidth={false}
+                              sx={{ borderRadius: 3, color: "text.secondary", minHeight: 44 }}
                             >
                               Отмена
                             </Button>
@@ -667,6 +668,7 @@ function CreateCalendar() {
                             startIcon={saving ? <CircularProgress size={16} /> : <CheckRoundedIcon />}
                             sx={{
                               px: 3,
+                              minHeight: 44,
                               borderRadius: 3,
                               bgcolor: "primary.main",
                               color: "primary.contrastText",

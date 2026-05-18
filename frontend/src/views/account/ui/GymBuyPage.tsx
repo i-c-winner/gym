@@ -160,32 +160,32 @@ function GymBuyPage() {
 
             {/* Order summary */}
             <Stack spacing={1} sx={{ mb: 2.5 }}>
-              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>Период</Typography>
-                <Typography sx={{ fontWeight: 600, fontSize: "0.875rem" }}>{periodLabel}</Typography>
+              <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+                <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", flexShrink: 0 }}>Период</Typography>
+                <Typography sx={{ fontWeight: 600, fontSize: "0.875rem", textAlign: "right", minWidth: 0 }}>{periodLabel}</Typography>
               </Stack>
               {rangeLabel && (
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>Даты</Typography>
-                  <Typography sx={{ fontSize: "0.875rem" }}>{rangeLabel}</Typography>
+                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", flexShrink: 0 }}>Даты</Typography>
+                  <Typography sx={{ fontSize: "0.875rem", textAlign: "right", minWidth: 0 }}>{rangeLabel}</Typography>
                 </Stack>
               )}
-              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>Занятий</Typography>
-                <Typography sx={{ fontSize: "0.875rem" }}>{daysCount}</Typography>
+              <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+                <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", flexShrink: 0 }}>Занятий</Typography>
+                <Typography sx={{ fontSize: "0.875rem", minWidth: 0 }}>{daysCount}</Typography>
               </Stack>
               {hasDiscount && (
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>Без скидки</Typography>
-                  <Typography sx={{ fontSize: "0.875rem", textDecoration: "line-through", color: "text.disabled" }}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", flexShrink: 0 }}>Без скидки</Typography>
+                  <Typography sx={{ fontSize: "0.875rem", textDecoration: "line-through", color: "text.disabled", textAlign: "right", minWidth: 0 }}>
                     {Number(grossAmount).toLocaleString("ru-RU")} {currency}
                   </Typography>
                 </Stack>
               )}
               {hasDiscount && (
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography sx={{ color: "secondary.main", fontSize: "0.875rem" }}>Скидка (кредиты)</Typography>
-                  <Typography sx={{ color: "secondary.main", fontWeight: 600, fontSize: "0.875rem" }}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+                  <Typography sx={{ color: "secondary.main", fontSize: "0.875rem", flexShrink: 0 }}>Скидка (кредиты)</Typography>
+                  <Typography sx={{ color: "secondary.main", fontWeight: 600, fontSize: "0.875rem", textAlign: "right", minWidth: 0 }}>
                     −{Number(discountAmount).toLocaleString("ru-RU")} {currency}
                   </Typography>
                 </Stack>
@@ -195,9 +195,9 @@ function GymBuyPage() {
             <Divider sx={{ mb: 2.5 }} />
 
             {/* Total */}
-            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "1.0625rem" }}>Итого</Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.875rem", color: ACCENT, lineHeight: 1 }}>
+            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3, gap: 1 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "1.0625rem", flexShrink: 0 }}>Итого</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: { xs: "1.375rem", sm: "1.875rem" }, color: ACCENT, lineHeight: 1, textAlign: "right", minWidth: 0 }}>
                 {Number(totalAmount).toLocaleString("ru-RU")} {currency}
               </Typography>
             </Stack>
@@ -237,7 +237,7 @@ function GymBuyPage() {
 
                 <Button
                   fullWidth onClick={() => router.back()}
-                  sx={{ borderRadius: 999, mt: 0.5, color: "text.secondary" }}
+                  sx={{ borderRadius: 999, mt: 0.5, color: "text.secondary", minHeight: 44 }}
                 >
                   Назад
                 </Button>

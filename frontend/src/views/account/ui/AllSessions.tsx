@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMediaQuery, useTheme } from "@mui/material";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -71,7 +72,7 @@ function SessionPopover({ state, onClose }: { state: PopoverState; onClose: () =
       transformOrigin={{ vertical: "top", horizontal: "left" }}
       slotProps={{
         paper: {
-          sx: { borderRadius: 3, p: 2, maxWidth: 270, boxShadow: "0 8px 24px rgba(62,56,47,0.13)" },
+          sx: { borderRadius: 3, p: 2, maxWidth: { xs: "90vw", sm: 270 }, boxShadow: "0 8px 24px rgba(62,56,47,0.13)" },
         },
       }}
     >
@@ -136,6 +137,8 @@ function AllSessions() {
 
   const [filterClass, setFilterClass] = useState("");
   const [filterTrainer, setFilterTrainer] = useState("");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [popover, setPopover] = useState<PopoverState>(null);
 
   // Admin guard
@@ -238,7 +241,7 @@ function AllSessions() {
                   spacing={2}
                   sx={{ mb: 3 }}
                 >
-                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 200 } }}>
                     <InputLabel>Тип занятия</InputLabel>
                     <Select
                       value={filterClass}
@@ -263,7 +266,7 @@ function AllSessions() {
                     </Select>
                   </FormControl>
 
-                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 200 } }}>
                     <InputLabel>Тренер</InputLabel>
                     <Select
                       value={filterTrainer}
@@ -318,19 +321,21 @@ function AllSessions() {
                 <Box
                   sx={{
                     position: "relative",
+                    overflowX: "hidden",
                     "& .fc": { fontFamily: "inherit" },
                     "& .fc-toolbar-title": {
                       fontFamily: "Georgia, 'Times New Roman', serif",
-                      fontSize: { xs: "1.1rem", md: "1.4rem" },
+                      fontSize: { xs: "1rem", md: "1.4rem" },
                       color: "#2f2a24",
                     },
                     "& .fc-button": {
                       bgcolor: "#6a7b6a !important",
                       border: "none !important",
                       borderRadius: "10px !important",
-                      px: "12px !important",
+                      px: "10px !important",
+                      minHeight: "44px !important",
                       fontFamily: "inherit !important",
-                      fontSize: "0.875rem !important",
+                      fontSize: "0.8125rem !important",
                     },
                     "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
                     "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
@@ -355,12 +360,11 @@ function AllSessions() {
                   <FullCalendar
                     plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
                     locale={ruLocale}
-                    initialView="dayGridMonth"
-                    headerToolbar={{
-                      left: "prev,next today",
-                      center: "title",
-                      right: "dayGridMonth,timeGridWeek,listMonth",
-                    }}
+                    initialView={isMobile ? "listMonth" : "dayGridMonth"}
+                    headerToolbar={isMobile
+                      ? { left: "prev,next", center: "title", right: "today" }
+                      : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }
+                    }
                     buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
                     events={fcEvents}
                     eventClick={handleEventClick}

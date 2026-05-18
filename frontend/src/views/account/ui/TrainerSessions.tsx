@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMediaQuery, useTheme } from "@mui/material";
 import {
   Alert,
   Box,
@@ -100,26 +101,26 @@ function SessionCard({
         "&:hover": { borderColor: "primary.main", bgcolor: "rgba(106,123,106,0.05)" },
       }}
     >
-      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
-        <Box>
+      <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontWeight: 700, fontSize: "0.9375rem", color: "text.primary", mb: 0.5 }}>
             {classTypeTitle}
           </Typography>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", mb: 0.5 }}>
-            <AccessTimeRoundedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+            <AccessTimeRoundedIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
             <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
               {formatDateTime(session.scheduled_at)} – {formatTime(session.ends_at)}
             </Typography>
           </Stack>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
-            <GroupOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+            <GroupOutlinedIcon sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }} />
             <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
               до {session.max_participants_snapshot} чел. · {session.duration_minutes_snapshot} мин
             </Typography>
           </Stack>
         </Box>
 
-        <Stack sx={{ alignItems: "flex-end", gap: 0.75 }}>
+        <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Chip
             label={session.status === "completed" ? "Завершено" : "Запланировано"}
             size="small"
@@ -228,7 +229,7 @@ function AttendanceDialog({
 
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth
-      slotProps={{ paper: { sx: { borderRadius: 4, p: 0.5 } } }}>
+      slotProps={{ paper: { sx: { borderRadius: { xs: 0, sm: 4 }, p: 0.5, m: { xs: 0, sm: 2 }, maxHeight: { xs: "100dvh", sm: "90dvh" }, alignSelf: { xs: "flex-end", sm: "center" } } } }}>
       <DialogTitle sx={{ fontFamily: "Georgia, serif", fontSize: "1.25rem", pb: 0.5 }}>
         {classTypeTitle}
         <Typography component="span" sx={{ display: "block", fontSize: "0.8125rem", color: "text.secondary", fontFamily: "inherit", fontWeight: 400, mt: 0.25 }}>
@@ -297,7 +298,6 @@ function AttendanceDialog({
                     {isPast && !alreadyResolved && (
                       <ToggleButtonGroup
                         exclusive
-                        size="small"
                         value={mark === null ? null : mark ? "yes" : "no"}
                         onChange={(_, v) => handleMark(p.id, v === null ? null : v === "yes")}
                         sx={{ flexShrink: 0 }}
@@ -305,7 +305,7 @@ function AttendanceDialog({
                         <ToggleButton
                           value="yes"
                           sx={{
-                            fontSize: "0.75rem", px: 1.5, borderRadius: "8px 0 0 8px",
+                            fontSize: "0.75rem", px: 1.5, minHeight: 44, borderRadius: "8px 0 0 8px",
                             "&.Mui-selected": { bgcolor: "#43a047", color: "#fff", "&:hover": { bgcolor: "#388e3c" } },
                           }}
                         >
@@ -315,7 +315,7 @@ function AttendanceDialog({
                         <ToggleButton
                           value="no"
                           sx={{
-                            fontSize: "0.75rem", px: 1.5, borderRadius: "0 8px 8px 0",
+                            fontSize: "0.75rem", px: 1.5, minHeight: 44, borderRadius: "0 8px 8px 0",
                             "&.Mui-selected": {
                               bgcolor: hasWarning ? "#9e9e9e" : "#ef5350",
                               color: "#fff",
@@ -500,9 +500,11 @@ function TrainerSessions() {
                 <Tabs
                   value={tab}
                   onChange={(_, v) => setTab(v as number)}
+                  variant="scrollable"
+                  scrollButtons="auto"
                   sx={{
                     mb: 2.5,
-                    "& .MuiTab-root": { fontFamily: "inherit", fontSize: "0.9rem", textTransform: "none" },
+                    "& .MuiTab-root": { fontFamily: "inherit", fontSize: { xs: "0.8125rem", sm: "0.9rem" }, textTransform: "none", minHeight: 44 },
                     "& .Mui-selected": { color: "primary.main", fontWeight: 700 },
                     "& .MuiTabs-indicator": { bgcolor: "primary.main" },
                   }}

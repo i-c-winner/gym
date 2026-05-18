@@ -115,7 +115,7 @@ function Account() {
                   <Box>
                     <Stack
                       direction="row"
-                      sx={{ mb: 1.5, justifyContent: "space-between", alignItems: "center" }}
+                      sx={{ mb: 1.5, justifyContent: "space-between", alignItems: "center", gap: 1 }}
                     >
                       <Typography
                         sx={{
@@ -126,7 +126,7 @@ function Account() {
                       >
                         Мои программы
                       </Typography>
-                      <Button component={Link} href="/account/programs" sx={{ color: "secondary.main" }}>
+                      <Button component={Link} href="/account/programs" sx={{ color: "secondary.main", minHeight: 44, flexShrink: 0 }}>
                         Смотреть все
                       </Button>
                     </Stack>

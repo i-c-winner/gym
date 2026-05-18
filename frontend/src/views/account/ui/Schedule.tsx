@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMediaQuery, useTheme } from "@mui/material";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -470,7 +471,7 @@ function PeriodCard({
       onClick={onClick}
       sx={{
         flex: "1 1 0",
-        minWidth: 140,
+        minWidth: { xs: "calc(50% - 6px)", sm: 140 },
         flexDirection: "column",
         alignItems: "flex-start",
         gap: 0.5,
@@ -506,6 +507,8 @@ function PeriodCard({
 
 function Schedule() {
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { status, logout, csrfToken } = useAuth();
   const { displayName, profileSubtitle } = useUserDisplay();
   const navItems = useAccountNavItems("/account/schedule");
@@ -632,20 +635,22 @@ function Schedule() {
             <CardShell>
               <Box
                 sx={{
-                  p: { xs: 1.5, md: 2.5 },
+                  p: { xs: 1, md: 2.5 },
+                  overflowX: "hidden",
                   "& .fc": { fontFamily: "inherit" },
                   "& .fc-toolbar-title": {
                     fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: { xs: "1.1rem", md: "1.4rem" },
+                    fontSize: { xs: "1rem", md: "1.4rem" },
                     color: "#2f2a24",
                   },
                   "& .fc-button": {
                     bgcolor: "#6a7b6a !important",
                     border: "none !important",
                     borderRadius: "10px !important",
-                    px: "12px !important",
+                    px: "10px !important",
+                    minHeight: "44px !important",
                     fontFamily: "inherit !important",
-                    fontSize: "0.875rem !important",
+                    fontSize: "0.8125rem !important",
                   },
                   "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
                   "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
@@ -659,12 +664,11 @@ function Schedule() {
                 <FullCalendar
                   plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
                   locale={ruLocale}
-                  initialView="dayGridMonth"
-                  headerToolbar={{
-                    left: "prev,next today",
-                    center: "title",
-                    right: "dayGridMonth,timeGridWeek,listMonth",
-                  }}
+                  initialView={isMobile ? "listMonth" : "dayGridMonth"}
+                  headerToolbar={isMobile
+                    ? { left: "prev,next", center: "title", right: "today" }
+                    : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }
+                  }
                   buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
                   events={fcEvents}
                   eventClick={handleEventClick}
@@ -705,9 +709,9 @@ function Schedule() {
                   </Box>
 
                   {/* Stats */}
-                  <Stack direction="row" spacing={2}>
+                  <Stack direction="row" spacing={2} sx={{ flexShrink: 0 }}>
                     <Stack sx={{ alignItems: "center" }}>
-                      <Typography sx={{ fontWeight: 700, fontSize: "1.5rem", color: unusedCreditsTotal > 0 ? "secondary.main" : "text.disabled", lineHeight: 1 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: { xs: "1.25rem", sm: "1.5rem" }, color: unusedCreditsTotal > 0 ? "secondary.main" : "text.disabled", lineHeight: 1 }}>
                         {unusedCreditsTotal}
                       </Typography>
                       <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
@@ -717,9 +721,9 @@ function Schedule() {
                         </Typography>
                       </Stack>
                     </Stack>
-                    <Divider orientation="vertical" flexItem />
+                    <Box sx={{ width: "1px", bgcolor: "divider", alignSelf: "stretch" }} />
                     <Stack sx={{ alignItems: "center" }}>
-                      <Typography sx={{ fontWeight: 700, fontSize: "1.5rem", color: missedTotal > 0 ? "#ef5350" : "text.disabled", lineHeight: 1 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: { xs: "1.25rem", sm: "1.5rem" }, color: missedTotal > 0 ? "#ef5350" : "text.disabled", lineHeight: 1 }}>
                         {missedTotal}
                       </Typography>
                       <Typography sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
