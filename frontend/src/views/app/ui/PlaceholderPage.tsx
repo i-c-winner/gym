@@ -63,8 +63,12 @@ export function PlaceholderPage() {
   // Show error from callback redirect
   useEffect(() => {
     const err = searchParams.get("error");
-    if (err === "telegram_invalid" || err === "telegram_auth") {
-      setError("Не удалось войти через Telegram. Попробуйте ещё раз.");
+    if (!err) return;
+    if (err === "telegram_invalid") {
+      setError("Неверные данные авторизации Telegram.");
+    } else {
+      // err may be encoded backend error message — show it so it's visible during debugging
+      setError(`Ошибка входа через Telegram: ${decodeURIComponent(err)}`);
     }
   }, [searchParams]);
 

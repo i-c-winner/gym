@@ -37,7 +37,10 @@ export function TelegramCallback() {
 
     authenticateWithTelegram(tgUser)
       .then(() => router.replace("/account"))
-      .catch(() => router.replace("/?error=telegram_auth"));
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? encodeURIComponent(err.message) : "telegram_auth";
+        router.replace(`/?error=${msg}`);
+      });
   }, [authenticateWithTelegram, params, router]);
 
   return (
