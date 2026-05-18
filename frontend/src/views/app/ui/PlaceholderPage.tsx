@@ -57,7 +57,8 @@ export function PlaceholderPage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [widgetFailed, setWidgetFailed] = useState(false);
+  // widget starts hidden; becomes visible only if Telegram iframe actually renders
+  const [widgetReady, setWidgetReady] = useState(false);
 
   // Show error from callback redirect
   useEffect(() => {
@@ -100,14 +101,21 @@ export function PlaceholderPage() {
     widgetRef.current.innerHTML = "";
     widgetRef.current.appendChild(script);
 
-    // Detect if widget rendered: Telegram appends an <iframe> inside the container
-    const timer = setTimeout(() => {
+    // Poll until Telegram iframe appears (widget loaded) or give up after 3s
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 200;
       const hasIframe = widgetRef.current?.querySelector("iframe");
-      if (!hasIframe) setWidgetFailed(true);
-    }, 4000);
+      if (hasIframe) {
+        setWidgetReady(true);
+        clearInterval(interval);
+      } else if (elapsed >= 3000) {
+        clearInterval(interval);
+      }
+    }, 200);
 
     return () => {
-      clearTimeout(timer);
+      clearInterval(interval);
       delete window.__onTelegramAuth;
     };
   }, [authenticateWithTelegram, botUsername, router]);
@@ -253,18 +261,8 @@ export function PlaceholderPage() {
                 </Typography>
               </Divider>
 
-              {/* Inline widget (works when domain is configured in BotFather) */}
-              <Box
-                ref={widgetRef}
-                sx={{
-                  display: widgetFailed ? "none" : "flex",
-                  justifyContent: "center",
-                  minHeight: 54,
-                }}
-              />
-
-              {/* Fallback button (shown when widget doesn't load) */}
-              {widgetFailed && (
+              {/* Fallback button — always visible unless the widget loaded */}
+              {!widgetReady && (
                 <Button
                   onClick={handleTelegramRedirect}
                   fullWidth
@@ -284,6 +282,15 @@ export function PlaceholderPage() {
                   Войти через Telegram
                 </Button>
               )}
+
+              {/* Inline widget — hidden until Telegram iframe actually renders */}
+              <Box
+                ref={widgetRef}
+                sx={{
+                  display: widgetReady ? "flex" : "none",
+                  justifyContent: "center",
+                }}
+              />
             </>
           )}
         </Box>
