@@ -209,7 +209,7 @@ export function PlaceholderPage() {
               </Divider>
               <Box
                 ref={widgetRef}
-                sx={{ display: "flex", justifyContent: "center", minHeight: 54 }}
+                sx={{ textAlign: "center", lineHeight: 0, overflow: "visible" }}
               />
             </>
           )}
