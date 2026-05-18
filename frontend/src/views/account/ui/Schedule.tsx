@@ -469,7 +469,7 @@ function PeriodCard({
   return (
     <Button
       onClick={onClick}
-      sx={{
+      sx={(theme) => ({
         flex: "1 1 0",
         minWidth: { xs: "calc(50% - 6px)", sm: 140 },
         flexDirection: "column",
@@ -477,13 +477,16 @@ function PeriodCard({
         gap: 0.5,
         p: 2,
         borderRadius: 3,
-        border: "1.5px solid rgba(106,123,106,0.25)",
-        bgcolor: "rgba(255,253,248,0.7)",
+        border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(143,163,143,0.25)" : "rgba(106,123,106,0.25)"}`,
+        bgcolor: theme.palette.mode === "dark" ? "rgba(143,163,143,0.08)" : "rgba(255,253,248,0.7)",
         color: "text.primary",
         textAlign: "left",
-        "&:hover": { bgcolor: "rgba(106,123,106,0.07)", borderColor: "primary.main" },
+        "&:hover": {
+          bgcolor: theme.palette.mode === "dark" ? "rgba(143,163,143,0.16)" : "rgba(106,123,106,0.07)",
+          borderColor: "primary.main",
+        },
         transition: "all 0.15s",
-      }}
+      })}
     >
       <Typography sx={{ fontWeight: 700, fontSize: "0.9375rem", lineHeight: 1.2, color: "primary.main" }}>
         {period.label}
@@ -634,14 +637,14 @@ function Schedule() {
             {/* Calendar */}
             <CardShell>
               <Box
-                sx={{
+                sx={(theme) => ({
                   p: { xs: 1, md: 2.5 },
                   overflowX: "hidden",
                   "& .fc": { fontFamily: "inherit" },
                   "& .fc-toolbar-title": {
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     fontSize: { xs: "1rem", md: "1.4rem" },
-                    color: "#2f2a24",
+                    color: theme.palette.text.primary,
                   },
                   "& .fc-button": {
                     bgcolor: "#6a7b6a !important",
@@ -656,10 +659,52 @@ function Schedule() {
                   "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
                     bgcolor: "#4a5b4a !important",
                   },
-                  "& .fc-col-header-cell": { color: "#5f584f" },
+                  "& .fc-col-header-cell": { color: theme.palette.text.secondary },
                   "& .fc-event": { cursor: "pointer", borderRadius: "6px !important" },
                   "& .fc-daygrid-event": { px: "4px" },
-                }}
+                  // Dark mode — FullCalendar CSS variables + row overrides
+                  ...(theme.palette.mode === "dark" && {
+                    "& .fc": {
+                      "--fc-page-bg-color": theme.palette.background.paper,
+                      "--fc-neutral-bg-color": "rgba(143,163,143,0.07)",
+                      "--fc-neutral-text-color": theme.palette.text.secondary,
+                      "--fc-border-color": "rgba(143,163,143,0.18)",
+                      "--fc-list-event-hover-bg-color": "rgba(143,163,143,0.12)",
+                      "--fc-today-bg-color": "rgba(143,163,143,0.10)",
+                    },
+                    // Force all list-view cells to use readable colors
+                    "& .fc-list-table td, & .fc-list-table th": {
+                      background: `${theme.palette.background.paper} !important`,
+                      color: `${theme.palette.text.primary} !important`,
+                      borderColor: "rgba(143,163,143,0.15) !important",
+                    },
+                    "& .fc-list-event:hover td": {
+                      background: "rgba(143,163,143,0.12) !important",
+                    },
+                    "& .fc-list-event-title a, & .fc-list-event-title": {
+                      color: `${theme.palette.text.primary} !important`,
+                    },
+                    "& .fc-list-event-time": {
+                      color: `${theme.palette.text.secondary} !important`,
+                    },
+                    "& .fc-list-day-cushion": {
+                      background: "rgba(143,163,143,0.14) !important",
+                    },
+                    "& .fc-list-day-text, & .fc-list-day-side-text": {
+                      color: `${theme.palette.text.primary} !important`,
+                    },
+                    // Grid/month view
+                    "& .fc-daygrid-day": {
+                      background: `${theme.palette.background.paper} !important`,
+                    },
+                    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
+                      color: `${theme.palette.text.primary} !important`,
+                    },
+                    "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
+                      borderColor: "rgba(143,163,143,0.18) !important",
+                    },
+                  }),
+                })}
               >
                 <FullCalendar
                   plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}

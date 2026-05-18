@@ -91,15 +91,18 @@ function SessionCard({
   return (
     <Box
       onClick={onClick}
-      sx={{
+      sx={(theme) => ({
         p: 2,
         borderRadius: 3,
-        border: "1.5px solid rgba(106,123,106,0.2)",
-        bgcolor: "rgba(255,253,248,0.8)",
+        border: `1.5px solid ${theme.palette.mode === "dark" ? "rgba(143,163,143,0.20)" : "rgba(106,123,106,0.20)"}`,
+        bgcolor: theme.palette.mode === "dark" ? "background.paper" : "rgba(255,253,248,0.8)",
         cursor: "pointer",
         transition: "all 0.15s",
-        "&:hover": { borderColor: "primary.main", bgcolor: "rgba(106,123,106,0.05)" },
-      }}
+        "&:hover": {
+          borderColor: "primary.main",
+          bgcolor: theme.palette.mode === "dark" ? "rgba(143,163,143,0.10)" : "rgba(106,123,106,0.05)",
+        },
+      })}
     >
       <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: 1 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>

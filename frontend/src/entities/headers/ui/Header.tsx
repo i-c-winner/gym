@@ -4,8 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { Box, Button, IconButton, Menu, MenuItem, Typography } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import { useTranslation } from "react-i18next";
 import { languageStorageKey } from "@/shared/i18n/config";
+import { useThemeMode } from "@/shared/theme/ThemeModeContext";
 
 const languages = [
   { code: "ru", label: "Русский", flag: "🇷🇺" },
@@ -15,9 +18,12 @@ const languages = [
 
 function Header() {
   const { i18n, t } = useTranslation();
+  const { mode, toggle } = useThemeMode();
   const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null);
   const currentLanguage =
     languages.find((language) => language.code === i18n.language) ?? languages[0];
+
+  const isDark = mode === "dark";
 
   const items = [
     { label: t("header.programs"), href: "/programs" },
@@ -52,11 +58,16 @@ function Header() {
           gap: 2,
           px: { xs: 2, sm: 2.5, md: 3 },
           py: { xs: 1.25, sm: 1.5 },
-          border: "1px solid rgba(62, 56, 47, 0.08)",
+          border: isDark
+            ? "1px solid rgba(143, 163, 143, 0.14)"
+            : "1px solid rgba(62, 56, 47, 0.08)",
           borderRadius: "999px",
-          bgcolor: "rgba(255, 253, 248, 0.82)",
+          bgcolor: isDark ? "rgba(31, 39, 31, 0.88)" : "rgba(255, 253, 248, 0.82)",
           backdropFilter: "blur(14px)",
-          boxShadow: "0 10px 24px rgba(62, 56, 47, 0.08)",
+          boxShadow: isDark
+            ? "0 10px 24px rgba(0, 0, 0, 0.30)"
+            : "0 10px 24px rgba(62, 56, 47, 0.08)",
+          transition: "background-color 0.25s, border-color 0.25s, box-shadow 0.25s",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -72,7 +83,7 @@ function Header() {
           >
             Gym
           </Typography>
-          <Box sx={{ width: "1px", height: 20, bgcolor: "rgba(62, 56, 47, 0.15)", mx: 0.5 }} />
+          <Box sx={{ width: "1px", height: 20, bgcolor: isDark ? "rgba(237,233,227,0.15)" : "rgba(62, 56, 47, 0.15)", mx: 0.5 }} />
           <IconButton
             component={Link}
             href="/main"
@@ -119,13 +130,40 @@ function Header() {
                 border: "1px solid transparent",
                 "&:hover": {
                   bgcolor: "background.paper",
-                  borderColor: "rgba(62, 56, 47, 0.08)",
+                  borderColor: isDark ? "rgba(143, 163, 143, 0.20)" : "rgba(62, 56, 47, 0.08)",
                 },
               }}
             >
               {item.label}
             </Button>
           ))}
+
+          {/* Theme toggle */}
+          <IconButton
+            onClick={toggle}
+            aria-label={isDark ? "Светлая тема" : "Тёмная тема"}
+            sx={{
+              width: 38,
+              height: 38,
+              ml: { xs: 0.25, sm: 0.5 },
+              borderRadius: "50%",
+              border: isDark ? "2px solid rgba(143, 163, 143, 0.30)" : "2px solid rgba(62, 56, 47, 0.12)",
+              bgcolor: isDark ? "rgba(143, 163, 143, 0.10)" : "rgba(255, 253, 248, 0.34)",
+              color: isDark ? "#8fa38f" : "#6a7b6a",
+              transition: "all 0.2s",
+              "&:hover": {
+                bgcolor: isDark ? "rgba(143, 163, 143, 0.18)" : "rgba(106, 123, 106, 0.10)",
+                borderColor: "primary.main",
+              },
+            }}
+          >
+            {isDark
+              ? <LightModeOutlinedIcon sx={{ fontSize: "1.2rem" }} />
+              : <DarkModeOutlinedIcon sx={{ fontSize: "1.2rem" }} />
+            }
+          </IconButton>
+
+          {/* Language toggle */}
           <Button
             type="button"
             aria-label={t("header.language")}
@@ -140,14 +178,14 @@ function Header() {
               p: 0,
               ml: { xs: 0.25, sm: 0.5 },
               borderRadius: "50%",
-              border: "2px solid #ffffff",
-              bgcolor: "rgba(255, 253, 248, 0.34)",
-              boxShadow: "0 6px 14px rgba(62, 56, 47, 0.14)",
+              border: isDark ? "2px solid rgba(237, 233, 227, 0.20)" : "2px solid #ffffff",
+              bgcolor: isDark ? "rgba(237, 233, 227, 0.08)" : "rgba(255, 253, 248, 0.34)",
+              boxShadow: isDark ? "0 6px 14px rgba(0,0,0,0.25)" : "0 6px 14px rgba(62, 56, 47, 0.14)",
               fontSize: "1.125rem",
               lineHeight: 1,
               "&:hover": {
                 bgcolor: "background.paper",
-                borderColor: "#ffffff",
+                borderColor: isDark ? "rgba(237, 233, 227, 0.40)" : "#ffffff",
               },
             }}
           >
@@ -165,8 +203,12 @@ function Header() {
                 sx: {
                   mt: 1,
                   borderRadius: 2,
-                  border: "1px solid rgba(62, 56, 47, 0.08)",
-                  boxShadow: "0 14px 34px rgba(62, 56, 47, 0.14)",
+                  border: isDark
+                    ? "1px solid rgba(143, 163, 143, 0.18)"
+                    : "1px solid rgba(62, 56, 47, 0.08)",
+                  boxShadow: isDark
+                    ? "0 14px 34px rgba(0,0,0,0.40)"
+                    : "0 14px 34px rgba(62, 56, 47, 0.14)",
                 },
               },
             }}
@@ -187,8 +229,8 @@ function Header() {
                     width: 28,
                     height: 28,
                     borderRadius: "50%",
-                    border: "2px solid #ffffff",
-                    bgcolor: "rgba(255, 253, 248, 0.7)",
+                    border: isDark ? "2px solid rgba(237,233,227,0.20)" : "2px solid #ffffff",
+                    bgcolor: isDark ? "rgba(237,233,227,0.08)" : "rgba(255, 253, 248, 0.7)",
                     boxShadow: "0 3px 10px rgba(62, 56, 47, 0.12)",
                     fontSize: "1rem",
                   }}

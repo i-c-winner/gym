@@ -5,9 +5,16 @@ function CardShell({ children }: { children: React.ReactNode }) {
     <Box
       sx={{
         borderRadius: 4,
-        bgcolor: "rgba(255, 253, 248, 0.88)",
-        border: "1px solid rgba(62, 56, 47, 0.08)",
-        boxShadow: "0 16px 40px rgba(62, 56, 47, 0.08)",
+        bgcolor: "background.paper",
+        border: "1px solid",
+        borderColor: (theme) =>
+          theme.palette.mode === "dark"
+            ? "rgba(143, 163, 143, 0.18)"
+            : "rgba(62, 56, 47, 0.08)",
+        boxShadow: (theme) =>
+          theme.palette.mode === "dark"
+            ? "0 4px 24px rgba(0, 0, 0, 0.45)"
+            : "0 16px 40px rgba(62, 56, 47, 0.08)",
       }}
     >
       {children}
