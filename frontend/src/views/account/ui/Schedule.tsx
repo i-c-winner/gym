@@ -44,8 +44,6 @@ import {
   getUserClassTypes,
   getUserSubscriptions,
   previewSubscription,
-  purchaseSubscription,
-  activateSubscription,
   type ScheduleEvent,
   type DiscountCredit,
   type ClassType,
@@ -53,7 +51,6 @@ import {
   type SubscriptionPreview,
 } from "@/shared/api/gym";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
-import { v4 as uuidv4 } from "uuid";
 
 // ── Period helpers ────────────────────────────────────────────────────────────
 
@@ -223,20 +220,18 @@ function PurchaseDialog({
   existingSubs,
   credits,
   onClose,
-  onSuccess,
 }: {
   period: PeriodInfo | null;
   classTypes: ClassType[];
   existingSubs: Subscription[];
   credits: DiscountCredit[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void; // kept for type compatibility
 }) {
+  const router = useRouter();
   const [selectedTypeId, setSelectedTypeId] = useState(classTypes[0]?.id ?? "");
   const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [buying, setBuying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Count unused credits for selected class type
   const availableCredits = credits.filter(
@@ -263,25 +258,25 @@ function PurchaseDialog({
       .finally(() => setLoadingPreview(false));
   }, [selectedTypeId, period]);
 
-  const handleBuy = async () => {
+  const handleGoToPay = () => {
     if (!preview || !period) return;
-    setError(null);
-    setBuying(true);
-    try {
-      const txnId = uuidv4();
-      const sub = await purchaseSubscription(selectedTypeId, period.type, txnId);
-      if (!sub) throw new Error("Не удалось создать подписку");
-      await activateSubscription(sub.id, txnId);
-      onSuccess();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка оплаты");
-      setBuying(false);
-    }
+    const ct = classTypes.find((c) => c.id === selectedTypeId);
+    const q = new URLSearchParams({
+      class_type_id:   selectedTypeId,
+      period_type:     period.type,
+      class_type_title: ct?.title ?? "",
+      period_label:    period.label,
+      range_label:     period.rangeLabel,
+      total_amount:    preview.total_amount,
+      gross_amount:    preview.gross_amount,
+      discount_amount: preview.discount_amount,
+      days_count:      String(preview.days_count),
+      currency:        preview.currency,
+    });
+    router.push(`/account/gym-buy?${q.toString()}`);
   };
 
   if (!period) return null;
-
-  const ct = classTypes.find((c) => c.id === selectedTypeId);
 
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth
@@ -364,7 +359,11 @@ function PurchaseDialog({
             </Box>
           ) : null}
 
-          {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
+          {hasConflict && (
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              На этот период уже есть активная подписка
+            </Alert>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -372,12 +371,12 @@ function PurchaseDialog({
           Отмена
         </Button>
         <Button
-          onClick={() => void handleBuy()}
-          disabled={buying || !preview || hasConflict || (preview?.available_spots === 0)}
+          onClick={handleGoToPay}
+          disabled={!preview || hasConflict || loadingPreview || (preview?.available_spots === 0)}
           variant="contained"
           sx={{ borderRadius: 3, px: 3, bgcolor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }}
         >
-          {buying ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Оплатить"}
+          {loadingPreview ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "К оплате →"}
         </Button>
       </DialogActions>
     </Dialog>
