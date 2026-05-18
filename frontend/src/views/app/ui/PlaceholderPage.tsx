@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Alert,
   Box,
@@ -33,7 +33,6 @@ function formatPhone(raw: string): string {
 
 export function PlaceholderPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { status, isAuthenticated, authenticateWithTelegram, authenticateWithPhone } = useAuth();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
@@ -41,16 +40,6 @@ export function PlaceholderPage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const err = searchParams.get("error");
-    if (!err) return;
-    if (err === "telegram_invalid") {
-      setError("Неверные данные авторизации Telegram.");
-    } else {
-      setError(`Ошибка входа через Telegram: ${decodeURIComponent(err)}`);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (status === "authenticated" && isAuthenticated) {
