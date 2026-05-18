@@ -1,6 +1,8 @@
-"""legacy gym schema (stub — tables already applied directly to DB)"""
+"""add user_role enum and users.role column (idempotent)"""
 
 from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM
 
 revision = "20260515_0008"
 down_revision = "20260503_0006"
@@ -9,12 +11,19 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # This revision was applied directly to the DB outside of Alembic.
-    # The following objects already exist: user_role enum, users.role column,
-    # subscriptions, enrollments, training_events, subscription_audit_logs tables
-    # and related enum types. This stub records the state.
-    pass
+    bind = op.get_bind()
+
+    # Create enum type if it doesn't exist yet
+    ENUM("admin", "trainer", "user", name="user_role").create(bind, checkfirst=True)
+
+    # Add role column if it doesn't exist
+    bind.execute(sa.text("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role user_role NOT NULL DEFAULT 'user'
+    """))
 
 
 def downgrade() -> None:
-    pass
+    op.drop_column("users", "role")
+    bind = op.get_bind()
+    ENUM(name="user_role").drop(bind, checkfirst=True)
