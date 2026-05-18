@@ -1,0 +1,23 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+from app.models.absence_request import AbsenceRequestStatus
+
+
+class AbsenceRequestCreateIn(BaseModel):
+    booking_id: str
+    note: str | None = None
+
+
+class AbsenceRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    booking_id: str
+    class_session_id: str | None = None  # populated from booking relation where available
+    user_id: str
+    trainer_id: str
+    status: AbsenceRequestStatus
+    note: str | None
+    decided_at: datetime | None

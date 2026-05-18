@@ -102,6 +102,12 @@ class Settings:
     access_content_placeholder: str = env_str("ACCESS_CONTENT_PLACEHOLDER", "Protected resource content.")
     webhook_signature_header: str = env_str("WEBHOOK_SIGNATURE_HEADER", "X-Payment-Signature")
     csrf_safe_methods: tuple[str, ...] = ("GET", "HEAD", "OPTIONS")
+    # Club / class system
+    club_timezone: str = env_str("CLUB_TIMEZONE", "Europe/Moscow")
+    session_generation_horizon_weeks: int = env_int("SESSION_GENERATION_HORIZON_WEEKS", 6)
+    absence_min_hours_before: int = env_int("ABSENCE_MIN_HOURS_BEFORE", 2)
+    # "auto_approve" or "auto_reject"
+    absence_timeout_policy: str = env_str("ABSENCE_TIMEOUT_POLICY", "auto_approve")
 
 
 settings = Settings()

@@ -11,10 +11,6 @@ import {
 import { request, readCsrfToken, writeCsrfToken, buildApiError } from "@/shared/api/client";
 import type { ApiError } from "@/shared/api/client";
 
-const DEV_AUTH_ENABLED =
-  process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_DEV_SKIP_AUTH === "true";
-
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
 type TelegramUser = {
@@ -35,6 +31,7 @@ type AuthUser = {
   last_name: string | null;
   age: number | null;
   gender: string | null;
+  role?: "admin" | "trainer" | "user";
   created_at?: string;
 };
 
@@ -46,6 +43,7 @@ type AuthPayload = {
   last_name: string | null;
   age: number | null;
   gender: string | null;
+  role: "admin" | "trainer" | "user";
   csrf_token: string;
 };
 
@@ -56,6 +54,7 @@ type AuthContextValue = {
   csrfToken: string | null;
   checkAuth: () => Promise<void>;
   authenticateWithTelegram: (telegramUser: TelegramUser) => Promise<void>;
+  authenticateWithPhone: (telephone: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -70,7 +69,21 @@ function mapAuthPayload(payload: AuthPayload): AuthUser {
     last_name: payload.last_name,
     age: payload.age,
     gender: payload.gender,
+    role: payload.role,
   };
+}
+
+function finalizeAuth(
+  payload: AuthPayload | null,
+  setUser: (u: AuthUser) => void,
+  setCsrfToken: (t: string) => void,
+  setStatus: (s: AuthStatus) => void,
+) {
+  if (!payload) throw buildApiError("Пустой ответ авторизации");
+  writeCsrfToken(payload.csrf_token);
+  setUser(mapAuthPayload(payload));
+  setCsrfToken(payload.csrf_token);
+  setStatus("authenticated");
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -79,21 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   const checkAuth = useCallback(async () => {
-    if (DEV_AUTH_ENABLED) {
-      setUser({
-        id: "dev-id",
-        telephone: null,
-        telegram_id: "123456789",
-        first_name: "Dev",
-        last_name: "User",
-        age: null,
-        gender: null,
-      });
-      setCsrfToken(null);
-      setStatus("authenticated");
-      return;
-    }
-
     try {
       const currentUser = await request<AuthUser>("/me", { method: "GET" });
       setUser(currentUser);
@@ -108,79 +106,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("anonymous");
         return;
       }
-
       throw error;
     }
   }, []);
 
   const authenticateWithTelegram = useCallback(async (telegramUser: TelegramUser) => {
-    if (DEV_AUTH_ENABLED) {
-      setUser({
-        id: "dev-id",
-        telephone: null,
-        telegram_id: String(telegramUser.id),
-        first_name: telegramUser.first_name ?? "Dev",
-        last_name: telegramUser.last_name ?? "User",
-        age: null,
-        gender: null,
-      });
-      setCsrfToken(null);
-      setStatus("authenticated");
-      return;
-    }
-
     const body = JSON.stringify({ telegram_auth: telegramUser });
-
-    const finalizeAuth = (payload: AuthPayload | null) => {
-      if (!payload) {
-        throw buildApiError("Пустой ответ авторизации");
-      }
-
-      const nextUser = mapAuthPayload(payload);
-      writeCsrfToken(payload.csrf_token);
-      setUser(nextUser);
-      setCsrfToken(payload.csrf_token);
-      setStatus("authenticated");
-    };
-
     try {
       const payload = await request<AuthPayload>("/auth/register", { method: "POST", body });
-      finalizeAuth(payload);
+      finalizeAuth(payload, setUser, setCsrfToken, setStatus);
     } catch (error) {
       const apiError = error as ApiError;
-      if (apiError.status !== 409) {
-        throw error;
-      }
-
+      if (apiError.status !== 409) throw error;
       const payload = await request<AuthPayload>("/auth/login", { method: "POST", body });
-      finalizeAuth(payload);
+      finalizeAuth(payload, setUser, setCsrfToken, setStatus);
+    }
+  }, []);
+
+  const authenticateWithPhone = useCallback(async (telephone: string) => {
+    const body = JSON.stringify({ telephone });
+    try {
+      const payload = await request<AuthPayload>("/auth/register", { method: "POST", body });
+      finalizeAuth(payload, setUser, setCsrfToken, setStatus);
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError.status !== 409) throw error;
+      const payload = await request<AuthPayload>("/auth/login", { method: "POST", body });
+      finalizeAuth(payload, setUser, setCsrfToken, setStatus);
     }
   }, []);
 
   const logout = useCallback(async () => {
-    if (DEV_AUTH_ENABLED) {
-      setUser(null);
-      setCsrfToken(null);
-      setStatus("anonymous");
-      return;
-    }
-
     const storedCsrfToken = csrfToken ?? readCsrfToken();
-
     if (storedCsrfToken) {
+      // Best-effort: сервер может вернуть 403/401, но мы всё равно очищаем локальную сессию
       try {
         await request("/auth/logout", {
           method: "POST",
           headers: { "X-CSRF-Token": storedCsrfToken },
         });
-      } catch (error) {
-        const apiError = error as ApiError;
-        if (apiError.status && apiError.status !== 401) {
-          throw error;
-        }
+      } catch {
+        // ignore — local state is cleared below regardless
       }
     }
-
     writeCsrfToken(null);
     setUser(null);
     setCsrfToken(null);
@@ -189,7 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-
     async function bootstrapAuth(): Promise<void> {
       try {
         await checkAuth();
@@ -200,12 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("anonymous");
       }
     }
-
     void bootstrapAuth();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [checkAuth]);
 
   const value = useMemo<AuthContextValue>(
@@ -216,9 +179,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       csrfToken,
       checkAuth,
       authenticateWithTelegram,
+      authenticateWithPhone,
       logout,
     }),
-    [authenticateWithTelegram, checkAuth, csrfToken, logout, status, user],
+    [authenticateWithPhone, authenticateWithTelegram, checkAuth, csrfToken, logout, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -226,11 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }
 

@@ -36,6 +36,7 @@ class UserRead(BaseModel):
     last_name: str | None
     age: int | None
     gender: str | None
+    role: str
     created_at: datetime
 
     model_config = {
