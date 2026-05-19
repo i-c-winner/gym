@@ -9,8 +9,6 @@ import {
   IconButton,
   Stack,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -31,8 +29,6 @@ type AccountSidebarProps = {
   logoutLabel?: string;
   onLogout: () => void;
 };
-
-// ── Shared nav content ────────────────────────────────────────────────────────
 
 function SidebarContent({
   navItems,
@@ -122,24 +118,19 @@ function SidebarContent({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-
 function AccountSidebar({
   navItems,
   settingsLabel = "Настройки",
   logoutLabel = "Выйти",
   onLogout,
 }: AccountSidebarProps) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const [drawerOpen, setDrawerOpen] = useState(false);
-
   const activeItem = navItems.find((i) => i.active);
 
-  // ── Mobile: compact trigger bar + Drawer ──────────────────────────────────
-  if (isMobile) {
-    return (
-      <>
+  return (
+    <>
+      {/* ── Mobile trigger bar (hidden on lg+) ─────────────────────────── */}
+      <Box sx={{ display: { xs: "block", lg: "none" } }}>
         <CardShell>
           <Box
             sx={{
@@ -150,7 +141,7 @@ function AccountSidebar({
               justifyContent: "space-between",
             }}
           >
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
               <Typography
                 sx={{
                   fontFamily: "Georgia, 'Times New Roman', serif",
@@ -158,19 +149,27 @@ function AccountSidebar({
                   fontWeight: 700,
                   color: "text.primary",
                   lineHeight: 1,
+                  flexShrink: 0,
                 }}
               >
                 Balance
               </Typography>
               {activeItem && (
                 <>
-                  <Box sx={{ width: "1px", height: 16, bgcolor: "divider" }} />
-                  <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
-                    <Box sx={{ color: "secondary.main", display: "flex", fontSize: "1rem" }}>
+                  <Box sx={{ width: "1px", height: 16, bgcolor: "divider", flexShrink: 0 }} />
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", minWidth: 0 }}>
+                    <Box sx={{ color: "secondary.main", display: "flex", fontSize: "1rem", flexShrink: 0 }}>
                       {activeItem.icon}
                     </Box>
                     <Typography
-                      sx={{ fontSize: "0.9rem", fontWeight: 600, color: "text.primary" }}
+                      sx={{
+                        fontSize: "0.9rem",
+                        fontWeight: 600,
+                        color: "text.primary",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
                       {activeItem.label}
                     </Typography>
@@ -188,6 +187,8 @@ function AccountSidebar({
                 border: "1.5px solid",
                 borderColor: "divider",
                 color: "text.primary",
+                flexShrink: 0,
+                ml: 1,
                 "&:hover": { bgcolor: "action.hover" },
               }}
             >
@@ -195,73 +196,73 @@ function AccountSidebar({
             </IconButton>
           </Box>
         </CardShell>
+      </Box>
 
-        <Drawer
-          anchor="left"
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          slotProps={{
-            paper: {
-              sx: {
-                width: 280,
-                borderRadius: "0 20px 20px 0",
-                bgcolor: "background.paper",
-                p: 2.5,
-                pt: 3,
-              },
-            },
-          }}
-        >
-          {/* Drawer header */}
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
-            <Typography
-              sx={{
-                fontFamily: "Georgia, 'Times New Roman', serif",
-                fontSize: "1.5rem",
-                color: "text.primary",
-                fontWeight: 700,
-              }}
-            >
-              Меню
-            </Typography>
-            <IconButton
-              onClick={() => setDrawerOpen(false)}
-              sx={{
-                width: 36,
-                height: 36,
-                border: "1.5px solid",
-                borderColor: "divider",
-                color: "text.secondary",
-              }}
-            >
-              <CloseRoundedIcon sx={{ fontSize: "1rem" }} />
-            </IconButton>
+      {/* ── Desktop full sidebar (hidden below lg) ──────────────────────── */}
+      <Box sx={{ display: { xs: "none", lg: "block" } }}>
+        <CardShell>
+          <Box sx={{ p: 3, height: "100%" }}>
+            <SidebarContent
+              navItems={navItems}
+              settingsLabel={settingsLabel}
+              logoutLabel={logoutLabel}
+              onLogout={onLogout}
+            />
           </Box>
+        </CardShell>
+      </Box>
 
-          <SidebarContent
-            navItems={navItems}
-            settingsLabel={settingsLabel}
-            logoutLabel={logoutLabel}
-            onLogout={onLogout}
-            onNavigate={() => setDrawerOpen(false)}
-          />
-        </Drawer>
-      </>
-    );
-  }
+      {/* ── Drawer (available on all sizes but only triggered on mobile) ── */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 280,
+              borderRadius: "0 20px 20px 0",
+              bgcolor: "background.paper",
+              p: 2.5,
+              pt: 3,
+            },
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
+          <Typography
+            sx={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              color: "text.primary",
+            }}
+          >
+            Меню
+          </Typography>
+          <IconButton
+            onClick={() => setDrawerOpen(false)}
+            sx={{
+              width: 36,
+              height: 36,
+              border: "1.5px solid",
+              borderColor: "divider",
+              color: "text.secondary",
+            }}
+          >
+            <CloseRoundedIcon sx={{ fontSize: "1rem" }} />
+          </IconButton>
+        </Box>
 
-  // ── Desktop: full sidebar ─────────────────────────────────────────────────
-  return (
-    <CardShell>
-      <Box sx={{ p: 3, height: "100%" }}>
         <SidebarContent
           navItems={navItems}
           settingsLabel={settingsLabel}
           logoutLabel={logoutLabel}
           onLogout={onLogout}
+          onNavigate={() => setDrawerOpen(false)}
         />
-      </Box>
-    </CardShell>
+      </Drawer>
+    </>
   );
 }
 
