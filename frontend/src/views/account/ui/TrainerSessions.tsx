@@ -161,6 +161,7 @@ function AttendanceDialog({
   classTypeTitle,
   absenceRequests,
   csrfToken,
+  isPast,
   onClose,
   onSaved,
 }: {
@@ -168,6 +169,7 @@ function AttendanceDialog({
   classTypeTitle: string;
   absenceRequests: AbsenceRequest[];
   csrfToken: string | null;
+  isPast: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -177,8 +179,6 @@ function AttendanceDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  const isPast = session.status === "completed";
 
   // Warning booking ids for this session
   const warnedBookingIds = new Set(
@@ -552,6 +552,7 @@ function TrainerSessions() {
           classTypeTitle={classTypeMap.get(activeSession.class_type_id) ?? "—"}
           absenceRequests={absenceRequests}
           csrfToken={csrfToken}
+          isPast={tab === 0}
           onClose={() => setActiveSession(null)}
           onSaved={() => void loadAll()}
         />
