@@ -21,6 +21,7 @@ type NavItem = {
   icon: React.ReactNode;
   href: string;
   active?: boolean;
+  disabled?: boolean;
 };
 
 type AccountSidebarProps = {
@@ -47,7 +48,7 @@ function SidebarContent({
             color: "text.primary",
           }}
         >
-          Balance
+         Osanka
         </Typography>
         <Typography sx={{ fontSize: "1rem", color: "text.secondary" }}>
           online
@@ -57,11 +58,12 @@ function SidebarContent({
       <Stack spacing={1}>
         {navItems.map((item) => (
           <Button
+            disabled={item.disabled}
             key={item.label}
-            component={Link}
-            href={item.href}
+            component={item.disabled ? "div" : Link}
+            href={item.disabled ? undefined : item.href}
             startIcon={item.icon}
-            onClick={onNavigate}
+            onClick={item.disabled ? undefined : onNavigate}
             sx={{
               justifyContent: "flex-start",
               minHeight: 52,
@@ -71,6 +73,10 @@ function SidebarContent({
               color: item.active ? "secondary.main" : "text.primary",
               fontWeight: item.active ? 700 : 500,
               fontSize: "1rem",
+              "&.Mui-disabled": {
+                color: "text.disabled",
+                opacity: 0.45,
+              },
             }}
           >
             {item.label}
@@ -82,10 +88,9 @@ function SidebarContent({
 
       <Stack spacing={1}>
         <Button
-          component={Link}
-          href="/main"
+          disabled
+          component="div"
           startIcon={<SettingsOutlinedIcon fontSize="small" />}
-          onClick={onNavigate}
           sx={{
             justifyContent: "flex-start",
             minHeight: 52,
@@ -94,6 +99,10 @@ function SidebarContent({
             color: "text.primary",
             fontSize: "1rem",
             fontWeight: 500,
+            "&.Mui-disabled": {
+              color: "text.disabled",
+              opacity: 0.45,
+            },
           }}
         >
           {settingsLabel}
