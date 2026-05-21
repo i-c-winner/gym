@@ -1,4 +1,5 @@
 from app.models.absence_request import AbsenceRequest
+from app.models.currency_rate import CurrencyRate
 from app.models.access_grant import AccessGrant
 from app.models.audit_log import AuditLog
 from app.models.booking import Booking
@@ -17,6 +18,7 @@ from app.models.user import User
 
 __all__ = [
     "AbsenceRequest",
+    "CurrencyRate",
     "AccessGrant",
     "AuditLog",
     "Booking",

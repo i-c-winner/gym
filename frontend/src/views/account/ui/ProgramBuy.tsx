@@ -8,6 +8,8 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import { getPlansByResourceSlug, type Plan } from "@/shared/api/plans";
 import { createOrder } from "@/shared/api/orders";
 import type { ApiError } from "@/shared/api/client";
+import { useCurrencyRate } from "@/shared/hooks/useCurrencyRate";
+import { formatPrice } from "@/shared/lib/formatPrice";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
@@ -39,6 +41,7 @@ function ProgramBuy({ slug }: { slug: string }) {
   });
   const navItems = useAccountNavItems("/account/programs");
 
+  const { rate } = useCurrencyRate();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [buyingPlanId, setBuyingPlanId] = useState<string | null>(null);
@@ -136,7 +139,7 @@ function ProgramBuy({ slug }: { slug: string }) {
 
                           <Box>
                             <Typography sx={{ fontWeight: 800, fontSize: "2rem", color: accent, lineHeight: 1 }}>
-                              {plan.price_amount} {plan.currency}
+                              {formatPrice(plan.price_amount, rate.coefficient, rate.currency)}
                             </Typography>
                           </Box>
 

@@ -39,6 +39,8 @@ import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavIte
 import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
 import { AccountPageHeader } from "@/widgets/account-layout/ui/AccountPageHeader";
 import { CardShell } from "@/shared/ui/CardShell";
+import { useCurrencyRate } from "@/shared/hooks/useCurrencyRate";
+import { formatPrice } from "@/shared/lib/formatPrice";
 import {
   getUserSchedule,
   getUserCredits,
@@ -301,6 +303,7 @@ function PurchaseDialog({
   onSuccess: () => void; // kept for type compatibility
 }) {
   const router = useRouter();
+  const { rate } = useCurrencyRate();
   const [selectedTypeId, setSelectedTypeId] = useState(classTypes[0]?.id ?? "");
   const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -414,7 +417,7 @@ function PurchaseDialog({
                 <Stack direction="row" sx={{ justifyContent: "space-between", mb: 0.5 }}>
                   <Typography sx={{ fontSize: "0.875rem", color: "text.secondary" }}>Скидка по кредитам</Typography>
                   <Typography sx={{ fontSize: "0.875rem", color: "secondary.main", fontWeight: 600 }}>
-                    −{Number(preview.discount_amount).toLocaleString("ru-RU")} ₽
+                    −{formatPrice(preview.discount_amount, rate.coefficient, rate.currency)}
                   </Typography>
                 </Stack>
               )}
@@ -422,7 +425,7 @@ function PurchaseDialog({
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 700 }}>Итого</Typography>
                 <Typography sx={{ fontWeight: 700, fontSize: "1.125rem", color: "primary.main" }}>
-                  {Number(preview.total_amount).toLocaleString("ru-RU")} ₽
+                  {formatPrice(preview.total_amount, rate.coefficient, rate.currency)}
                 </Typography>
               </Stack>
               <Typography sx={{ mt: 0.75, fontSize: "0.75rem", color: "text.disabled" }}>

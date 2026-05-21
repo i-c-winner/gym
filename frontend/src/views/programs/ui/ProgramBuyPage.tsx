@@ -18,6 +18,8 @@ import {
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import { getResourceBySlug, getResourceContent, type Resource } from "@/shared/api/resources";
 import { getPlansByResourceSlug, type Plan } from "@/shared/api/plans";
+import { useCurrencyRate } from "@/shared/hooks/useCurrencyRate";
+import { formatPrice } from "@/shared/lib/formatPrice";
 import { createOrder } from "@/shared/api/orders";
 import { simulatePayment, type Provider } from "@/shared/api/payments";
 import type { ApiError } from "@/shared/api/client";
@@ -50,6 +52,7 @@ function ProgramBuyPage({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const { csrfToken, status: authStatus } = useAuth();
 
+  const { rate } = useCurrencyRate();
   const [resource, setResource] = useState<Resource | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [pageState, setPageState] = useState<PageState>("idle");
@@ -180,7 +183,7 @@ function ProgramBuyPage({ slug }: { slug: string }) {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 800, fontSize: "1.75rem", color: accent }}>
-                {plan.price_amount} {plan.currency}
+                {formatPrice(plan.price_amount, rate.coefficient, rate.currency)}
               </Typography>
             </Stack>
 

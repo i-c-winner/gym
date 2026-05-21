@@ -17,6 +17,8 @@ import { Header } from "@/entities/headers/ui/Header";
 import { CardShell } from "@/shared/ui/CardShell";
 import { purchaseSubscription, activateSubscription } from "@/shared/api/gym";
 import { v4 as uuidv4 } from "uuid";
+import { useCurrencyRate } from "@/shared/hooks/useCurrencyRate";
+import { formatPrice } from "@/shared/lib/formatPrice";
 
 const COUNTDOWN_SECONDS = 5;
 const ACCENT = "#6a7b6a";
@@ -46,6 +48,7 @@ function GymBuyPage() {
   const daysCount     = params.get("days_count") ?? "0";
   const currency      = params.get("currency") ?? "RUB";
 
+  const { rate } = useCurrencyRate();
   const [pageState, setPageState] = useState<PageState>("idle");
   const [provider, setProvider]   = useState<Provider | null>(null);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
@@ -178,7 +181,7 @@ function GymBuyPage() {
                 <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
                   <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", flexShrink: 0 }}>Без скидки</Typography>
                   <Typography sx={{ fontSize: "0.875rem", textDecoration: "line-through", color: "text.disabled", textAlign: "right", minWidth: 0 }}>
-                    {Number(grossAmount).toLocaleString("ru-RU")} {currency}
+                    {formatPrice(grossAmount, rate.coefficient, rate.currency)}
                   </Typography>
                 </Stack>
               )}
@@ -186,7 +189,7 @@ function GymBuyPage() {
                 <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
                   <Typography sx={{ color: "secondary.main", fontSize: "0.875rem", flexShrink: 0 }}>Скидка (кредиты)</Typography>
                   <Typography sx={{ color: "secondary.main", fontWeight: 600, fontSize: "0.875rem", textAlign: "right", minWidth: 0 }}>
-                    −{Number(discountAmount).toLocaleString("ru-RU")} {currency}
+                    −{formatPrice(discountAmount, rate.coefficient, rate.currency)}
                   </Typography>
                 </Stack>
               )}
@@ -198,7 +201,7 @@ function GymBuyPage() {
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3, gap: 1 }}>
               <Typography sx={{ fontWeight: 700, fontSize: "1.0625rem", flexShrink: 0 }}>Итого</Typography>
               <Typography sx={{ fontWeight: 800, fontSize: { xs: "1.375rem", sm: "1.875rem" }, color: ACCENT, lineHeight: 1, textAlign: "right", minWidth: 0 }}>
-                {Number(totalAmount).toLocaleString("ru-RU")} {currency}
+                {formatPrice(totalAmount, rate.coefficient, rate.currency)}
               </Typography>
             </Stack>
 

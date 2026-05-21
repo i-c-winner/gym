@@ -20,6 +20,8 @@ import { getMyAccesses } from "@/shared/api/accesses";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { Header } from "@/entities/headers/ui/Header";
 import { CardShell } from "@/shared/ui/CardShell";
+import { useCurrencyRate } from "@/shared/hooks/useCurrencyRate";
+import { formatPrice } from "@/shared/lib/formatPrice";
 
 const programImages: Record<string, string> = {
   flexibility: "/images/assets_page-editor_1.1720702264.png",
@@ -37,6 +39,7 @@ const programAccents: Record<string, string> = {
 
 function PlanCard({ plan, accent, onBuy }: { plan: Plan; accent: string; onBuy: () => void }) {
   const { t } = useTranslation();
+  const { rate } = useCurrencyRate();
 
   return (
     <CardShell>
@@ -51,7 +54,7 @@ function PlanCard({ plan, accent, onBuy }: { plan: Plan; accent: string; onBuy: 
         </Box>
 
         <Typography sx={{ fontWeight: 800, fontSize: "2.25rem", color: accent, lineHeight: 1 }}>
-          {plan.price_amount} {plan.currency}
+          {formatPrice(plan.price_amount, rate.coefficient, rate.currency)}
         </Typography>
 
         <Button
