@@ -150,6 +150,38 @@ async def list_users(
     ]
 
 
+@router.get("/users/{user_id}/schedule")
+async def get_user_schedule_admin(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[dict]:
+    """Return all bookings with full session details for a specific user (admin view)."""
+    result = await db.execute(
+        select(Booking, ClassSession, ClassType)
+        .join(ClassSession, ClassSession.id == Booking.class_session_id)
+        .join(ClassType, ClassType.id == ClassSession.class_type_id)
+        .where(Booking.user_id == user_id)
+        .order_by(ClassSession.scheduled_at)
+    )
+    rows = result.all()
+    return [
+        {
+            "booking_id": str(booking.id),
+            "booking_status": booking.status,
+            "session_id": str(session.id),
+            "scheduled_at": session.scheduled_at.isoformat(),
+            "ends_at": session.ends_at.isoformat(),
+            "class_type_title": ct.title,
+            "class_type_description": ct.description,
+            "duration_minutes": session.duration_minutes_snapshot,
+            "max_participants": session.max_participants_snapshot,
+            "subscription_id": str(booking.subscription_id),
+        }
+        for booking, session, ct in rows
+    ]
+
+
 @router.patch("/users/{user_id}/role")
 async def set_user_role(
     user_id: str,

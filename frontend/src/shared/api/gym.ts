@@ -168,6 +168,11 @@ export async function getUserSchedule(): Promise<ScheduleEvent[]> {
   return res ?? [];
 }
 
+export async function getAdminUserSchedule(userId: string): Promise<ScheduleEvent[]> {
+  const res = await request<ScheduleEvent[]>(`/gym/admin/users/${userId}/schedule`, { method: "GET" });
+  return res ?? [];
+}
+
 // ── User subscriptions & credits ──────────────────────────────────────────────
 
 export type DiscountCredit = {

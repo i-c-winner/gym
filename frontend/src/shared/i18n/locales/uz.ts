@@ -103,6 +103,17 @@ const uz = {
       },
     },
   },
+  calendarPage: {
+    title: "Mening kalendarim",
+    subtitle: "Oflayn mashg'ulotlarga qatnashish tarixi",
+    noEvents: "Bu davr uchun mashg'ulotlar yo'q",
+    legend: {
+      attended: "Qatnashdi",
+      missed: "O'tkazib yubordi",
+      unmarked: "Murabbiy hali belgilamadi",
+      upcoming: "Kelasi mashg'ulot",
+    },
+  },
   programBuy: {
     subtitle: "Dasturga kirish uchun tarifni tanlang",
     loading: "Tariflar yuklanmoqda...",
