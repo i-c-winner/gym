@@ -33,6 +33,27 @@ import {
 import type { PeriodInfo } from "@/shared/lib/schedulePeriods";
 import { ProjectedCalendar, generateProjectedEvents } from "./ProjectedCalendar";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const DAY_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+function formatClassSchedule(ct: ClassType): string {
+  if (!ct.schedules.length) return "";
+  // Группируем дни по времени начала
+  const byTime = new Map<string, number[]>();
+  for (const s of ct.schedules) {
+    const time = s.start_time.slice(0, 5);
+    if (!byTime.has(time)) byTime.set(time, []);
+    byTime.get(time)!.push(s.day_of_week);
+  }
+  return [...byTime.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([time, days]) =>
+      `${days.sort((a, b) => a - b).map((d) => DAY_SHORT[d]).join(", ")} · ${time}`,
+    )
+    .join("  /  ");
+}
+
 type PurchaseDialogProps = {
   period: PeriodInfo | null;
   classTypes: ClassType[];
@@ -220,7 +241,16 @@ export function PurchaseDialog({
               sx={{ borderRadius: 2 }}
             >
               {classTypes.map((c) => (
-                <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
+                <MenuItem key={c.id} value={c.id} sx={{ flexDirection: "column", alignItems: "flex-start", py: 1 }}>
+                  <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.3, fontWeight: 500 }}>
+                    {c.title}
+                  </Typography>
+                  {c.schedules.length > 0 && (
+                    <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", lineHeight: 1.4, mt: 0.25 }}>
+                      {formatClassSchedule(c)}
+                    </Typography>
+                  )}
+                </MenuItem>
               ))}
             </Select>
           </Box>
