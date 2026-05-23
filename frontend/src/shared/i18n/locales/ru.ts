@@ -103,6 +103,17 @@ const ru = {
       },
     },
   },
+  calendarPage: {
+    title: "Мой календарь",
+    subtitle: "История посещений offline-занятий",
+    noEvents: "Нет занятий на этот период",
+    legend: {
+      attended: "Посетил",
+      missed: "Пропустил",
+      unmarked: "Тренер ещё не отметил",
+      upcoming: "Предстоящее занятие",
+    },
+  },
   programBuy: {
     subtitle: "Выберите тариф для доступа к программе",
     loading: "Загружаем тарифы...",

@@ -10,6 +10,7 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
 import EditCalendarOutlinedIcon from "@mui/icons-material/EditCalendarOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import { useAuth } from "@/features/auth/model/auth-context";
 import type { NavItem } from "./AccountSidebar";
 
@@ -21,12 +22,42 @@ function useAccountNavItems(activeHref: string): NavItem[] {
 
   return useMemo(
     () => [
-      { label: t("accountMyPrograms.navigation.home"), icon: <HomeOutlinedIcon fontSize="small" />, href: "/main", active: activeHref === "/main" },
-      { label: t("accountMyPrograms.navigation.programs"), icon: <AppsOutlinedIcon fontSize="small" />, href: "/account/programs", active: activeHref === "/account/programs" },
-      { label: t("accountMyPrograms.navigation.lessons"), icon: <OndemandVideoOutlinedIcon fontSize="small" />, href: "/main", disabled: true },
-      { label: t("accountMyPrograms.navigation.workouts"), icon: <FitnessCenterOutlinedIcon fontSize="small" />, href: "/account/schedule", active: activeHref === "/account/schedule" },
-      { label: t("accountMyPrograms.navigation.calendar"), icon: <CalendarMonthOutlinedIcon fontSize="small" />, href: "/main", disabled: true },
-      { label: t("accountMyPrograms.navigation.favorites"), icon: <FavoriteBorderOutlinedIcon fontSize="small" />, href: "/main", disabled: true },
+      {
+        label: t("accountMyPrograms.navigation.home"),
+        icon: <HomeOutlinedIcon fontSize="small" />,
+        href: "/main",
+        active: activeHref === "/main",
+      },
+      {
+        label: t("accountMyPrograms.navigation.programs"),
+        icon: <AppsOutlinedIcon fontSize="small" />,
+        href: "/account/programs",
+        active: activeHref === "/account/programs",
+      },
+      {
+        label: t("accountMyPrograms.navigation.lessons"),
+        icon: <OndemandVideoOutlinedIcon fontSize="small" />,
+        href: "/main",
+        disabled: true,
+      },
+      {
+        label: t("accountMyPrograms.navigation.workouts"),
+        icon: <FitnessCenterOutlinedIcon fontSize="small" />,
+        href: "/account/schedule",
+        active: activeHref === "/account/schedule",
+      },
+      {
+        label: t("accountMyPrograms.navigation.calendar"),
+        icon: <CalendarMonthOutlinedIcon fontSize="small" />,
+        href: "/main",
+        disabled: true,
+      },
+      {
+        label: t("accountMyPrograms.navigation.favorites"),
+        icon: <FavoriteBorderOutlinedIcon fontSize="small" />,
+        href: "/main",
+        disabled: true,
+      },
       ...(isTrainer
         ? [
             {
@@ -40,6 +71,12 @@ function useAccountNavItems(activeHref: string): NavItem[] {
       ...(isAdmin
         ? [
             {
+              label: "Посещения",
+              icon: <BarChartOutlinedIcon fontSize="small" />,
+              href: "/account/visits",
+              active: activeHref === "/account/visits",
+            },
+            {
               label: "Управление занятиями",
               icon: <EditCalendarOutlinedIcon fontSize="small" />,
               href: "/account/create_calendar",
@@ -49,7 +86,7 @@ function useAccountNavItems(activeHref: string): NavItem[] {
         : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, activeHref, isAdmin],
+    [t, activeHref, isAdmin]
   );
 }
 

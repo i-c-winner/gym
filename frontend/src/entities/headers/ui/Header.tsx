@@ -19,9 +19,11 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import AppsRoundedIcon from "@mui/icons-material/AppsRounded";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+
 import { useTranslation } from "react-i18next";
 import { languageStorageKey } from "@/shared/i18n/config";
 import { useThemeMode } from "@/shared/theme/ThemeModeContext";
+
 
 const languages = [
   { code: "ru", label: "Русский", flag: "🇷🇺" },
@@ -38,7 +40,6 @@ function Header() {
   const currentLanguage =
     languages.find((l) => l.code === i18n.language) ?? languages[0];
   const isDark = mode === "dark";
-
   const navItems = [
     { label: t("header.programs"), href: "/programs", icon: <AppsRoundedIcon /> },
     { label: t("header.account"), href: "/account", icon: <AccountCircleOutlinedIcon /> },
