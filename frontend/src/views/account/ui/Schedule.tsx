@@ -470,6 +470,13 @@ function PurchaseDialog({
     return count;
   }, [period, classTypes, selectedTypeId, selectedDays]);
 
+  // Сколько дней эффективного типа (чип или дропдаун) попадают в selectedDays
+  const purchaseActiveDaysPerWeek = useMemo(() => {
+    const ct = classTypes.find((c) => c.id === effectiveTypeId);
+    if (!ct) return 0;
+    return ct.schedules.filter((s) => selectedDays.has(s.day_of_week)).length;
+  }, [classTypes, effectiveTypeId, selectedDays]);
+
   // Пропорциональный пересчёт цены по выбранным дням
   const priceCalc = useMemo(() => {
     if (!preview || preview.days_count === 0) return null;
@@ -659,52 +666,6 @@ function PurchaseDialog({
           {/* ── Календарь занятий ── */}
           {calendarOpen && (
             <Box>
-              {/* Чипы-фильтры */}
-              <Stack
-                direction="row"
-                sx={{ flexWrap: "wrap", gap: 1, mb: 1.5 }}
-              >
-                <Chip
-                  label="Все"
-                  size="small"
-                  onClick={() => setHighlightTypeId(null)}
-                  variant={highlightTypeId === null ? "filled" : "outlined"}
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
-                    ...(highlightTypeId === null
-                      ? { bgcolor: "#6a7b6a", color: "#fff" }
-                      : { borderColor: "rgba(106,123,106,0.4)", color: "text.secondary" }),
-                  }}
-                />
-                {classTypes.map((ct) => {
-                  const active = highlightTypeId === ct.id;
-                  return (
-                    <Chip
-                      key={ct.id}
-                      label={ct.title}
-                      size="small"
-                      onClick={() =>
-                        setHighlightTypeId((h) => (h === ct.id ? null : ct.id))
-                      }
-                      variant={active ? "filled" : "outlined"}
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: "0.75rem",
-                        ...(active
-                          ? { bgcolor: "#6a7b6a", color: "#fff" }
-                          : { borderColor: "rgba(106,123,106,0.4)", color: "text.secondary" }),
-                        "&:hover": {
-                          bgcolor: active
-                            ? "#5a6b5a"
-                            : "rgba(106,123,106,0.08)",
-                        },
-                      }}
-                    />
-                  );
-                })}
-              </Stack>
-
               {/* Подсказки */}
               <Stack direction="row" spacing={2} sx={{ mb: 1, flexWrap: "wrap", gap: 0.5 }}>
                 <Typography sx={{ fontSize: "0.75rem", color: "text.disabled" }}>
@@ -860,19 +821,53 @@ function PurchaseDialog({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, flexDirection: "column", alignItems: "stretch", gap: 1 }}>
-        {selectedDays.size < 2 && (
+      <DialogActions sx={{ px: 3, pb: 2.5, flexDirection: "column", alignItems: "stretch", gap: 1.5 }}>
+        {/* Сводка: выбранные дни + сумма */}
+        {preview && priceCalc && (
+          <Box
+            sx={(t) => ({
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2,
+              py: 1.25,
+              borderRadius: 2,
+              bgcolor: t.palette.mode === "dark" ? "rgba(106,123,106,0.12)" : "rgba(106,123,106,0.08)",
+              border: `1px solid ${t.palette.mode === "dark" ? "rgba(106,123,106,0.25)" : "rgba(106,123,106,0.2)"}`,
+            })}
+          >
+            <Stack spacing={0.25}>
+              <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+                {purchaseActiveDaysPerWeek} {purchaseActiveDaysPerWeek === 1 ? "день" : purchaseActiveDaysPerWeek < 5 ? "дня" : "дней"} в неделю
+                {" · "}
+                {priceCalc.daysCount} {priceCalc.daysCount === 1 ? "занятие" : priceCalc.daysCount < 5 ? "занятия" : "занятий"}
+              </Typography>
+              {!isFullSelection && (
+                <Typography sx={{ fontSize: "0.7rem", color: "text.disabled" }}>
+                  по выбранным дням
+                </Typography>
+              )}
+            </Stack>
+            <Typography sx={{ fontWeight: 700, fontSize: "1.125rem", color: "primary.main" }}>
+              {formatPrice(priceCalc.totalStr, rate.coefficient, rate.currency)}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Предупреждение о минимуме дней */}
+        {purchaseActiveDaysPerWeek < 2 && (
           <Typography sx={{ fontSize: "0.75rem", color: "warning.main", textAlign: "center" }}>
             Выберите минимум 2 дня посещения в неделю
           </Typography>
         )}
+
         <Stack direction="row" sx={{ justifyContent: "flex-end", gap: 1 }}>
           <Button onClick={onClose} sx={{ borderRadius: 3, color: "text.secondary" }}>
             Отмена
           </Button>
           <Button
             onClick={handleGoToPay}
-            disabled={!preview || !priceCalc || hasConflict || loadingPreview || preview.available_spots === 0 || priceCalc.daysCount === 0 || selectedDays.size < 2}
+            disabled={!preview || !priceCalc || hasConflict || loadingPreview || preview.available_spots === 0 || purchaseActiveDaysPerWeek < 2}
             variant="contained"
             sx={{ borderRadius: 3, px: 3, bgcolor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }}
           >
