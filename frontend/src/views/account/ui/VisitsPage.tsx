@@ -40,19 +40,22 @@ import {
 // ── Цвета ─────────────────────────────────────────────────────────────────────
 
 const COLOR_ATTENDED = "#43a047"; // зелёный  — тренер отметил посещение
-const COLOR_MISSED   = "#ef5350"; // красный  — тренер отметил отсутствие
+const COLOR_MISSED = "#ef5350"; // красный  — тренер отметил отсутствие
 const COLOR_UNMARKED = "#f9a825"; // жёлтый   — прошедшее, не отмечено
+const COLOR_UPCOMING = "#6a7b6a"; // серо-зелёный — предстоящее занятие
 
 function eventColor(ev: ScheduleEvent): string {
+  // Нормализуем статус: защита от возможной сериализации StrEnum в верхнем регистре
+  const status = String(ev.booking_status ?? "").toLowerCase();
   const isPast = new Date(ev.scheduled_at) < new Date();
-  if (ev.booking_status === "attended") return COLOR_ATTENDED;
-  if (ev.booking_status === "absent" || ev.booking_status === "no_show") return COLOR_MISSED;
-  if (ev.booking_status === "confirmed" && isPast) return COLOR_UNMARKED;
-  return COLOR_ATTENDED; // предстоящие — нейтрально зелёные
+  if (status === "attended") return COLOR_ATTENDED;
+  if (status === "absent" || status === "no_show") return COLOR_MISSED;
+  if (status === "confirmed" && isPast) return COLOR_UNMARKED;
+  return COLOR_UPCOMING; // предстоящие подтверждённые
 }
 
 function toFcEvent(ev: ScheduleEvent): EventInput | null {
-  if (ev.booking_status === "cancelled") return null;
+  if (String(ev.booking_status ?? "").toLowerCase() === "cancelled") return null;
   const color = eventColor(ev);
   return {
     id: ev.booking_id,
@@ -71,8 +74,18 @@ function toFcEvent(ev: ScheduleEvent): EventInput | null {
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-      <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: color, flexShrink: 0 }} />
-      <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>{label}</Typography>
+      <Box
+        sx={{
+          width: 12,
+          height: 12,
+          borderRadius: "3px",
+          bgcolor: color,
+          flexShrink: 0,
+        }}
+      />
+      <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+        {label}
+      </Typography>
     </Stack>
   );
 }
@@ -83,7 +96,7 @@ const fcStyles = (
   isDark: boolean,
   paperBg: string,
   textPrimary: string,
-  textSecondary: string,
+  textSecondary: string
 ) => ({
   "& .fc": { fontFamily: "inherit" },
   "& .fc-toolbar-title": {
@@ -121,13 +134,23 @@ const fcStyles = (
       color: `${textPrimary} !important`,
       borderColor: "rgba(143,163,143,0.15) !important",
     },
-    "& .fc-list-event:hover td": { background: "rgba(143,163,143,0.12) !important" },
-    "& .fc-list-event-title a, & .fc-list-event-title": { color: `${textPrimary} !important` },
+    "& .fc-list-event:hover td": {
+      background: "rgba(143,163,143,0.12) !important",
+    },
+    "& .fc-list-event-title a, & .fc-list-event-title": {
+      color: `${textPrimary} !important`,
+    },
     "& .fc-list-event-time": { color: `${textSecondary} !important` },
-    "& .fc-list-day-cushion": { background: "rgba(143,163,143,0.14) !important" },
-    "& .fc-list-day-text, & .fc-list-day-side-text": { color: `${textPrimary} !important` },
+    "& .fc-list-day-cushion": {
+      background: "rgba(143,163,143,0.14) !important",
+    },
+    "& .fc-list-day-text, & .fc-list-day-side-text": {
+      color: `${textPrimary} !important`,
+    },
     "& .fc-daygrid-day": { background: `${paperBg} !important` },
-    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": { color: `${textPrimary} !important` },
+    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
+      color: `${textPrimary} !important`,
+    },
     "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
       borderColor: "rgba(143,163,143,0.18) !important",
     },
@@ -145,28 +168,34 @@ function userLabel(u: TrainerUser): string {
 // ── Компонент ─────────────────────────────────────────────────────────────────
 
 function VisitsPage() {
-  const router   = useRouter();
+  const router = useRouter();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
-  const isDark   = muiTheme.palette.mode === "dark";
+  const isDark = muiTheme.palette.mode === "dark";
   const { status, user, logout } = useAuth();
   const { displayName, profileSubtitle } = useUserDisplay();
   const navItems = useAccountNavItems("/account/visits");
 
   const isAdmin = user?.role === "admin";
 
-  const [users,         setUsers]         = useState<TrainerUser[]>([]);
-  const [selectedId,    setSelectedId]    = useState<string>("");
-  const [events,        setEvents]        = useState<ScheduleEvent[]>([]);
-  const [loadingUsers,  setLoadingUsers]  = useState(false);
+  const [users, setUsers] = useState<TrainerUser[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [error,         setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Редирект
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "anonymous") { router.replace("/"); return; }
-    if (status === "authenticated" && !isAdmin) { router.replace("/account"); return; }
+    if (status === "anonymous") {
+      router.replace("/");
+      return;
+    }
+    if (status === "authenticated" && !isAdmin) {
+      router.replace("/account");
+      return;
+    }
   }, [status, isAdmin, router]);
 
   // Загружаем список пользователей
@@ -175,7 +204,11 @@ function VisitsPage() {
     setLoadingUsers(true);
     getAdminUsers()
       .then(setUsers)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Ошибка загрузки пользователей"))
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error ? e.message : "Ошибка загрузки пользователей"
+        )
+      )
       .finally(() => setLoadingUsers(false));
   }, [status, isAdmin]);
 
@@ -194,7 +227,10 @@ function VisitsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedId) { setEvents([]); return; }
+    if (!selectedId) {
+      setEvents([]);
+      return;
+    }
     void loadSchedule(selectedId);
   }, [selectedId, loadSchedule]);
 
@@ -206,8 +242,8 @@ function VisitsPage() {
     );
   }
 
-  const paperBg       = muiTheme.palette.background.paper;
-  const textPrimary   = muiTheme.palette.text.primary;
+  const paperBg = muiTheme.palette.background.paper;
+  const textPrimary = muiTheme.palette.text.primary;
   const textSecondary = muiTheme.palette.text.secondary;
 
   const fcEvents: EventInput[] = events
@@ -215,7 +251,13 @@ function VisitsPage() {
     .filter((e): e is EventInput => e !== null);
 
   return (
-    <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
+    <Box
+      sx={{
+        minHeight: "100dvh",
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2, md: 3 },
+      }}
+    >
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Sidebar */}
         <Grid size={{ xs: 12, lg: 2.25 }}>
@@ -237,7 +279,11 @@ function VisitsPage() {
             />
 
             {error && (
-              <Alert severity="error" sx={{ borderRadius: 3 }} onClose={() => setError(null)}>
+              <Alert
+                severity="error"
+                sx={{ borderRadius: 3 }}
+                onClose={() => setError(null)}
+              >
                 {error}
               </Alert>
             )}
@@ -247,7 +293,11 @@ function VisitsPage() {
               <Box sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
                 <FormControl fullWidth size="small" disabled={loadingUsers}>
                   <InputLabel id="user-select-label">
-                    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
+                      sx={{ alignItems: "center" }}
+                    >
                       <PersonOutlineOutlinedIcon sx={{ fontSize: "1rem" }} />
                       <span>Выберите пользователя</span>
                     </Stack>
@@ -256,7 +306,11 @@ function VisitsPage() {
                     labelId="user-select-label"
                     value={selectedId}
                     label={
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        sx={{ alignItems: "center" }}
+                      >
                         <PersonOutlineOutlinedIcon sx={{ fontSize: "1rem" }} />
                         <span>Выберите пользователя</span>
                       </Stack>
@@ -266,7 +320,8 @@ function VisitsPage() {
                   >
                     {loadingUsers ? (
                       <MenuItem disabled value="">
-                        <CircularProgress size={16} sx={{ mr: 1 }} /> Загрузка...
+                        <CircularProgress size={16} sx={{ mr: 1 }} />{" "}
+                        Загрузка...
                       </MenuItem>
                     ) : (
                       users.map((u) => (
@@ -284,10 +339,20 @@ function VisitsPage() {
             {selectedId && (
               <CardShell>
                 <Box sx={{ px: { xs: 2, md: 3 }, py: 1.75 }}>
-                  <Stack direction="row" sx={{ flexWrap: "wrap", gap: { xs: 1.5, sm: 3 } }}>
+                  <Stack
+                    direction="row"
+                    sx={{ flexWrap: "wrap", gap: { xs: 1.5, sm: 3 } }}
+                  >
                     <LegendDot color={COLOR_ATTENDED} label="Посетил" />
-                    <LegendDot color={COLOR_MISSED}   label="Не пришёл" />
-                    <LegendDot color={COLOR_UNMARKED} label="Тренер не отметил" />
+                    <LegendDot color={COLOR_MISSED} label="Не пришёл" />
+                    <LegendDot
+                      color={COLOR_UNMARKED}
+                      label="Тренер не отметил"
+                    />
+                    <LegendDot
+                      color={COLOR_UPCOMING}
+                      label="Предстоящее занятие"
+                    />
                   </Stack>
                 </Box>
               </CardShell>
@@ -303,26 +368,61 @@ function VisitsPage() {
                 }}
               >
                 {loadingEvents ? (
-                  <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
+                  <Box
+                    sx={{ py: 8, display: "flex", justifyContent: "center" }}
+                  >
                     <CircularProgress />
                   </Box>
                 ) : (
                   <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                    plugins={[
+                      dayGridPlugin,
+                      timeGridPlugin,
+                      listPlugin,
+                      interactionPlugin,
+                    ]}
                     locale={ruLocale}
                     initialView={isMobile ? "listMonth" : "dayGridMonth"}
                     headerToolbar={
                       isMobile
                         ? { left: "prev,next", center: "title", right: "today" }
-                        : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }
+                        : {
+                            left: "prev,next today",
+                            center: "title",
+                            right: "dayGridMonth,timeGridWeek,listMonth",
+                          }
                     }
-                    buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
+                    buttonText={{
+                      today: "Сегодня",
+                      month: "Месяц",
+                      week: "Неделя",
+                      list: "Список",
+                    }}
                     events={fcEvents}
                     height="auto"
-                    eventTimeFormat={{ hour: "2-digit", minute: "2-digit", meridiem: false }}
+                    eventTimeFormat={{
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      meridiem: false,
+                    }}
+                    eventDidMount={(info) => {
+                      // Гарантируем применение цвета через DOM — обходит
+                      // любые CSS-конфликты MUI/emotion
+                      const ev = info.event.extendedProps as ScheduleEvent;
+                      const color = eventColor(ev);
+                      info.el.style.setProperty("background-color", color, "important");
+                      info.el.style.setProperty("border-color", "transparent", "important");
+                      info.el.style.setProperty("color", "#fff", "important");
+                      // Текст во вложенных элементах (время, заголовок)
+                      info.el.querySelectorAll<HTMLElement>("*").forEach((child) => {
+                        child.style.setProperty("color", "#fff", "important");
+                      });
+                    }}
                     noEventsContent={
                       <Stack sx={{ py: 6, alignItems: "center", gap: 1 }}>
-                        <CalendarMonthOutlinedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+                        <CalendarMonthOutlinedIcon
+                          sx={{ fontSize: 40, color: "text.disabled" }}
+                        />
                         <Typography sx={{ color: "text.secondary" }}>
                           {selectedId
                             ? "Нет занятий на этот период"
