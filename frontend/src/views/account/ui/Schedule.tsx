@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMediaQuery, useTheme } from "@mui/material";
 import FullCalendar from "@fullcalendar/react";
@@ -286,6 +286,74 @@ function EventPopover({
   );
 }
 
+// ── Projected calendar events ─────────────────────────────────────────────────
+
+/**
+ * Разворачивает повторяющиеся расписания classTypes в конкретные события
+ * для заданного диапазона дат.
+ * highlightTypeId === null → все события показываются одинаково (зелёные).
+ * highlightTypeId === id   → этот тип контрастный, остальные приглушённые.
+ */
+function generateProjectedEvents(
+  classTypes: ClassType[],
+  periodStart: Date,
+  periodEnd: Date,
+  highlightTypeId: string | null,
+  selectedDays: Set<number>,  // 0=Пн … 6=Вс (наш формат)
+  selectedTypeId: string,     // тип, для которого работает выбор дней
+): EventInput[] {
+  const result: EventInput[] = [];
+  const endExclusive = new Date(periodEnd);
+  endExclusive.setDate(endExclusive.getDate() + 1);
+
+  const cursor = new Date(periodStart);
+  cursor.setHours(0, 0, 0, 0);
+
+  while (cursor < endExclusive) {
+    // JS: 0=Sun … 6=Sat → наш формат: 0=Mon … 6=Sun
+    const jsDay = cursor.getDay();
+    const ourDay = jsDay === 0 ? 6 : jsDay - 1;
+
+    for (const ct of classTypes) {
+      for (const slot of ct.schedules) {
+        if (slot.day_of_week !== ourDay) continue;
+        const [hStr, mStr] = slot.start_time.split(":");
+        const evStart = new Date(cursor);
+        evStart.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+        const evEnd = new Date(evStart);
+        evEnd.setMinutes(evEnd.getMinutes() + ct.duration_minutes);
+
+        // Затемнение по выбору дня — только для выбранного в дропдауне типа
+        const dimmedByDay = ct.id === selectedTypeId && !selectedDays.has(ourDay);
+
+        // Подсветка по чипу-фильтру (независимо от выбора дней)
+        const isHighlighted =
+          !dimmedByDay && (highlightTypeId === null || ct.id === highlightTypeId);
+
+        // Включаем параметры фильтра в id — FullCalendar не кэширует старые цвета
+        const filterId = `${highlightTypeId ?? "all"}-${selectedTypeId}-${[...selectedDays].sort().join("")}`;
+        result.push({
+          id: `proj-${filterId}-${ct.id}-${evStart.getTime()}`,
+          title: ct.title,
+          start: evStart,
+          end: evEnd,
+          backgroundColor: dimmedByDay
+            ? "rgba(80,80,80,0.1)"
+            : (isHighlighted ? "#6a7b6a" : "rgba(160,160,160,0.28)"),
+          borderColor: dimmedByDay
+            ? "transparent"
+            : (isHighlighted ? "#4a5f4a" : "rgba(160,160,160,0.4)"),
+          textColor: dimmedByDay ? "#ccc" : (isHighlighted ? "#fff" : "#aaa"),
+        });
+      }
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return result;
+}
+
 // ── Purchase dialog ───────────────────────────────────────────────────────────
 
 function PurchaseDialog({
@@ -303,10 +371,33 @@ function PurchaseDialog({
   onSuccess: () => void; // kept for type compatibility
 }) {
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { rate } = useCurrencyRate();
   const [selectedTypeId, setSelectedTypeId] = useState(classTypes[0]?.id ?? "");
   const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  // ── Calendar state ──────────────────────────────────────────────────────────
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  // null = все контрастные; id = только этот тип контрастный, остальные приглушены
+  const [highlightTypeId, setHighlightTypeId] = useState<string | null>(
+    classTypes[0]?.id ?? null,
+  );
+  // Выбранные дни недели (0=Пн … 6=Вс, наш формат)
+  // По умолчанию — все дни, на которых есть занятия выбранного типа
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(() => {
+    const ct = classTypes.find((c) => c.id === (classTypes[0]?.id ?? ""));
+    return new Set(ct?.schedules.map((s) => s.day_of_week) ?? []);
+  });
+
+  const toggleDay = useCallback((ourDay: number) => {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(ourDay)) { next.delete(ourDay); } else { next.add(ourDay); }
+      return next;
+    });
+  }, []);
 
   // Count unused credits for selected class type
   const availableCredits = credits.filter(
@@ -333,20 +424,105 @@ function PurchaseDialog({
       .finally(() => setLoadingPreview(false));
   }, [selectedTypeId, period]);
 
+  // При смене дропдауна — синхронизируем чип с ним
+  useEffect(() => {
+    setHighlightTypeId(selectedTypeId || null);
+  }, [selectedTypeId]);
+
+  // Активный тип для выбора дней: чип (если выбран) или дропдаун
+  const effectiveTypeId = highlightTypeId ?? selectedTypeId;
+
+  // При смене чипа или дропдауна — сбрасываем выбранные дни под новый тип
+  useEffect(() => {
+    const ct = classTypes.find((c) => c.id === (highlightTypeId ?? selectedTypeId));
+    setSelectedDays(new Set(ct?.schedules.map((s) => s.day_of_week) ?? []));
+  }, [highlightTypeId, selectedTypeId, classTypes]);
+
+  // Все дни эффективного типа (для кнопки "Сбросить" и isFullSelection)
+  const allScheduledDays = useMemo(() => {
+    const ct = classTypes.find((c) => c.id === effectiveTypeId);
+    return new Set(ct?.schedules.map((s) => s.day_of_week) ?? []);
+  }, [classTypes, effectiveTypeId]);
+
+  const isFullSelection = useMemo(
+    () => [...allScheduledDays].every((d) => selectedDays.has(d)),
+    [allScheduledDays, selectedDays],
+  );
+
+  // Кол-во занятий выбранного типа на выбранных днях в периоде
+  const customDaysCount = useMemo(() => {
+    if (!period) return 0;
+    const ct = classTypes.find((c) => c.id === selectedTypeId);
+    if (!ct) return 0;
+    let count = 0;
+    const endExcl = new Date(period.end);
+    endExcl.setDate(endExcl.getDate() + 1);
+    const cur = new Date(period.start);
+    cur.setHours(0, 0, 0, 0);
+    while (cur < endExcl) {
+      const jsDay = cur.getDay();
+      const ourDay = jsDay === 0 ? 6 : jsDay - 1;
+      if (selectedDays.has(ourDay) && ct.schedules.some((s) => s.day_of_week === ourDay)) {
+        count++;
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  }, [period, classTypes, selectedTypeId, selectedDays]);
+
+  // Пропорциональный пересчёт цены по выбранным дням
+  const priceCalc = useMemo(() => {
+    if (!preview || preview.days_count === 0) return null;
+    if (isFullSelection) return {
+      daysCount:  preview.days_count,
+      gross:      Number(preview.gross_amount),
+      discount:   Number(preview.discount_amount),
+      total:      Number(preview.total_amount),
+      grossStr:   preview.gross_amount,
+      discountStr: preview.discount_amount,
+      totalStr:   preview.total_amount,
+    };
+    const ratio = customDaysCount / preview.days_count;
+    const gross    = Number(preview.gross_amount)    * ratio;
+    const discount = Number(preview.discount_amount) * ratio;
+    const total    = Number(preview.total_amount)    * ratio;
+    const fmt = (n: number) => String(Math.round(n * 100) / 100);
+    return {
+      daysCount: customDaysCount,
+      gross, discount, total,
+      grossStr:    fmt(gross),
+      discountStr: fmt(discount),
+      totalStr:    fmt(total),
+    };
+  }, [preview, isFullSelection, customDaysCount]);
+
+  // Проецируем повторяющиеся слоты на даты периода
+  const projectedEvents = useMemo(() => {
+    if (!period || !calendarOpen) return [];
+    return generateProjectedEvents(
+      classTypes,
+      period.start,
+      period.end,
+      highlightTypeId,
+      selectedDays,
+      selectedTypeId,
+    );
+  }, [period, classTypes, highlightTypeId, calendarOpen, selectedDays, selectedTypeId]);
+
   const handleGoToPay = () => {
-    if (!preview || !period) return;
+    if (!preview || !period || !priceCalc) return;
     const ct = classTypes.find((c) => c.id === selectedTypeId);
     const q = new URLSearchParams({
-      class_type_id:   selectedTypeId,
-      period_type:     period.type,
+      class_type_id:    selectedTypeId,
+      period_type:      period.type,
       class_type_title: ct?.title ?? "",
-      period_label:    period.label,
-      range_label:     period.rangeLabel,
-      total_amount:    preview.total_amount,
-      gross_amount:    preview.gross_amount,
-      discount_amount: preview.discount_amount,
-      days_count:      String(preview.days_count),
-      currency:        preview.currency,
+      period_label:     period.label,
+      range_label:      period.rangeLabel,
+      total_amount:     priceCalc.totalStr,
+      gross_amount:     priceCalc.grossStr,
+      discount_amount:  priceCalc.discountStr,
+      days_count:       String(priceCalc.daysCount),
+      currency:         preview.currency,
     });
     router.push(`/account/gym-buy?${q.toString()}`);
   };
@@ -354,8 +530,15 @@ function PurchaseDialog({
   if (!period) return null;
 
   return (
-    <Dialog open onClose={onClose} maxWidth="xs" fullWidth
-      slotProps={{ paper: { sx: { borderRadius: 4, p: 1 } } }}>
+    <Dialog
+      open
+      onClose={onClose}
+      maxWidth={calendarOpen ? "md" : "xs"}
+      fullWidth
+      fullScreen={isMobile && calendarOpen}
+      scroll="paper"
+      slotProps={{ paper: { sx: { borderRadius: calendarOpen && !isMobile ? 4 : 4, p: 1 } } }}
+    >
       <DialogTitle sx={{ fontFamily: "Georgia, serif", fontSize: "1.375rem", pb: 1 }}>
         Купить подписку
       </DialogTitle>
@@ -378,7 +561,10 @@ function PurchaseDialog({
             <Select
               fullWidth size="small"
               value={selectedTypeId}
-              onChange={(e) => setSelectedTypeId(e.target.value)}
+              onChange={(e) => {
+                setSelectedTypeId(e.target.value);
+                setHighlightTypeId(e.target.value);
+              }}
               sx={{ borderRadius: 2 }}
             >
               {classTypes.map((c) => (
@@ -407,17 +593,26 @@ function PurchaseDialog({
           {/* Price preview */}
           {loadingPreview ? (
             <Skeleton variant="rounded" height={80} sx={{ borderRadius: 2 }} />
-          ) : preview ? (
+          ) : preview && priceCalc ? (
             <Box sx={{ bgcolor: "rgba(62,56,47,0.04)", borderRadius: 2, p: 1.5 }}>
               <Stack direction="row" sx={{ justifyContent: "space-between", mb: 0.5 }}>
-                <Typography sx={{ fontSize: "0.875rem", color: "text.secondary" }}>Занятий в периоде</Typography>
-                <Typography sx={{ fontSize: "0.875rem", fontWeight: 600 }}>{preview.days_count}</Typography>
+                <Typography sx={{ fontSize: "0.875rem", color: "text.secondary" }}>
+                  Занятий в периоде
+                  {!isFullSelection && (
+                    <Typography component="span" sx={{ fontSize: "0.75rem", color: "primary.main", ml: 0.75 }}>
+                      (по выбранным дням)
+                    </Typography>
+                  )}
+                </Typography>
+                <Typography sx={{ fontSize: "0.875rem", fontWeight: 600 }}>
+                  {priceCalc.daysCount}
+                </Typography>
               </Stack>
-              {Number(preview.discount_amount) > 0 && (
+              {priceCalc.discount > 0 && (
                 <Stack direction="row" sx={{ justifyContent: "space-between", mb: 0.5 }}>
                   <Typography sx={{ fontSize: "0.875rem", color: "text.secondary" }}>Скидка по кредитам</Typography>
                   <Typography sx={{ fontSize: "0.875rem", color: "secondary.main", fontWeight: 600 }}>
-                    −{formatPrice(preview.discount_amount, rate.coefficient, rate.currency)}
+                    −{formatPrice(priceCalc.discountStr, rate.coefficient, rate.currency)}
                   </Typography>
                 </Stack>
               )}
@@ -425,7 +620,7 @@ function PurchaseDialog({
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 700 }}>Итого</Typography>
                 <Typography sx={{ fontWeight: 700, fontSize: "1.125rem", color: "primary.main" }}>
-                  {formatPrice(preview.total_amount, rate.coefficient, rate.currency)}
+                  {formatPrice(priceCalc.totalStr, rate.coefficient, rate.currency)}
                 </Typography>
               </Stack>
               <Typography sx={{ mt: 0.75, fontSize: "0.75rem", color: "text.disabled" }}>
@@ -439,20 +634,251 @@ function PurchaseDialog({
               На этот период уже есть активная подписка
             </Alert>
           )}
+
+          {/* ── Кнопка раскрытия календаря ── */}
+          <Button
+            size="small"
+            variant={calendarOpen ? "contained" : "outlined"}
+            startIcon={<CalendarMonthOutlinedIcon />}
+            onClick={() => setCalendarOpen((v) => !v)}
+            sx={{
+              alignSelf: "flex-start",
+              borderRadius: 2,
+              fontSize: "0.8125rem",
+              borderColor: "primary.main",
+              color: calendarOpen ? "#fff" : "primary.main",
+              bgcolor: calendarOpen ? "primary.main" : "transparent",
+              "&:hover": {
+                bgcolor: calendarOpen ? "primary.dark" : "rgba(106,123,106,0.07)",
+              },
+            }}
+          >
+            {calendarOpen ? "Скрыть расписание" : "Посмотреть расписание"}
+          </Button>
+
+          {/* ── Календарь занятий ── */}
+          {calendarOpen && (
+            <Box>
+              {/* Чипы-фильтры */}
+              <Stack
+                direction="row"
+                sx={{ flexWrap: "wrap", gap: 1, mb: 1.5 }}
+              >
+                <Chip
+                  label="Все"
+                  size="small"
+                  onClick={() => setHighlightTypeId(null)}
+                  variant={highlightTypeId === null ? "filled" : "outlined"}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    ...(highlightTypeId === null
+                      ? { bgcolor: "#6a7b6a", color: "#fff" }
+                      : { borderColor: "rgba(106,123,106,0.4)", color: "text.secondary" }),
+                  }}
+                />
+                {classTypes.map((ct) => {
+                  const active = highlightTypeId === ct.id;
+                  return (
+                    <Chip
+                      key={ct.id}
+                      label={ct.title}
+                      size="small"
+                      onClick={() =>
+                        setHighlightTypeId((h) => (h === ct.id ? null : ct.id))
+                      }
+                      variant={active ? "filled" : "outlined"}
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        ...(active
+                          ? { bgcolor: "#6a7b6a", color: "#fff" }
+                          : { borderColor: "rgba(106,123,106,0.4)", color: "text.secondary" }),
+                        "&:hover": {
+                          bgcolor: active
+                            ? "#5a6b5a"
+                            : "rgba(106,123,106,0.08)",
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Stack>
+
+              {/* Подсказки */}
+              <Stack direction="row" spacing={2} sx={{ mb: 1, flexWrap: "wrap", gap: 0.5 }}>
+                <Typography sx={{ fontSize: "0.75rem", color: "text.disabled" }}>
+                  Кликните на день недели в шапке календаря, чтобы включить/выключить его
+                </Typography>
+                {!isFullSelection && (
+                  <Typography
+                    onClick={() => setSelectedDays(new Set(allScheduledDays))}
+                    sx={{
+                      fontSize: "0.75rem",
+                      color: "primary.main",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      "&:hover": { textDecoration: "underline" },
+                    }}
+                  >
+                    Сбросить
+                  </Typography>
+                )}
+              </Stack>
+
+              {/* FullCalendar — горизонтальный скролл */}
+              <Box
+                sx={(t) => ({
+                  border: `1px solid ${t.palette.divider}`,
+                  borderRadius: 2,
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  WebkitOverflowScrolling: "touch",
+                })}
+              >
+              <Box
+                sx={(t) => ({
+                  minWidth: 560,
+                  "& .fc": { fontFamily: "inherit", fontSize: "0.8125rem" },
+                  "& .fc-toolbar-title": {
+                    fontFamily: "Georgia, serif",
+                    fontSize: "1rem !important",
+                    color: t.palette.text.primary,
+                  },
+                  "& .fc-button": {
+                    bgcolor: "#6a7b6a !important",
+                    border: "none !important",
+                    borderRadius: "8px !important",
+                    px: "8px !important",
+                    minHeight: "32px !important",
+                    fontFamily: "inherit !important",
+                    fontSize: "0.75rem !important",
+                  },
+                  "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
+                  "& .fc-col-header-cell": { color: t.palette.text.secondary, p: "0 !important" },
+                  "& .fc-col-header-cell-cushion": { p: "0 !important", display: "block" },
+                  "& .fc-event": { cursor: "default", borderRadius: "4px !important" },
+                  "& .fc-daygrid-event": { px: "2px" },
+                  ...(t.palette.mode === "dark" && {
+                    "& .fc": {
+                      "--fc-page-bg-color": t.palette.background.paper,
+                      "--fc-neutral-bg-color": "rgba(143,163,143,0.07)",
+                      "--fc-border-color": "rgba(143,163,143,0.18)",
+                      "--fc-today-bg-color": "rgba(143,163,143,0.10)",
+                    },
+                    "& .fc-daygrid-day": {
+                      background: `${t.palette.background.paper} !important`,
+                    },
+                    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
+                      color: `${t.palette.text.primary} !important`,
+                    },
+                    "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
+                      borderColor: "rgba(143,163,143,0.18) !important",
+                    },
+                  }),
+                })}
+              >
+                <FullCalendar
+                  key={`${effectiveTypeId}-${[...selectedDays].sort().join("")}`}
+                  plugins={[dayGridPlugin, interactionPlugin]}
+                  locale={ruLocale}
+                  initialView="dayGridMonth"
+                  initialDate={period.start}
+                  validRange={{
+                    start: period.start.toISOString().slice(0, 10),
+                    end: (() => {
+                      const d = new Date(period.end);
+                      d.setDate(d.getDate() + 1);
+                      return d.toISOString().slice(0, 10);
+                    })(),
+                  }}
+                  headerToolbar={{
+                    left: "prev,next",
+                    center: "title",
+                    right: "",
+                  }}
+                  buttonText={{ today: "Сегодня" }}
+                  dayHeaderContent={(args) => {
+                    // JS: 0=Sun…6=Sat → наш: 0=Пн…6=Вс
+                    const ourDay = args.dow === 0 ? 6 : args.dow - 1;
+                    const ct = classTypes.find((c) => c.id === effectiveTypeId);
+                    const hasSlot = ct?.schedules.some((s) => s.day_of_week === ourDay) ?? false;
+                    const isOn = selectedDays.has(ourDay);
+                    return (
+                      <Box
+                        onClick={hasSlot ? () => toggleDay(ourDay) : undefined}
+                        title={hasSlot ? (isOn ? "Нажмите, чтобы исключить день" : "Нажмите, чтобы включить день") : undefined}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "100%",
+                          py: 0.75,
+                          cursor: hasSlot ? "pointer" : "default",
+                          userSelect: "none",
+                          fontWeight: isOn && hasSlot ? 700 : 400,
+                          fontSize: "0.8125rem",
+                          color: hasSlot
+                            ? (isOn ? "#fff" : "text.secondary")
+                            : "text.disabled",
+                          bgcolor: hasSlot
+                            ? (isOn ? "#6a7b6a" : "rgba(80,80,80,0.12)")
+                            : "transparent",
+                          transition: "all 0.15s",
+                          "&:hover": hasSlot
+                            ? { bgcolor: isOn ? "#5a6b5a" : "rgba(80,80,80,0.22)" }
+                            : {},
+                        }}
+                      >
+                        {args.text}
+                      </Box>
+                    );
+                  }}
+                  events={projectedEvents}
+                  height="auto"
+                  eventTimeFormat={{
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    meridiem: false,
+                  }}
+                  noEventsContent={
+                    <Typography
+                      sx={{
+                        py: 4,
+                        textAlign: "center",
+                        color: "text.secondary",
+                        fontSize: "0.875rem",
+                      }}
+                    >
+                      Нет занятий в выбранном периоде
+                    </Typography>
+                  }
+                />
+              </Box>
+              </Box>
+            </Box>
+          )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5 }}>
-        <Button onClick={onClose} sx={{ borderRadius: 3, color: "text.secondary" }}>
-          Отмена
-        </Button>
-        <Button
-          onClick={handleGoToPay}
-          disabled={!preview || hasConflict || loadingPreview || (preview?.available_spots === 0)}
-          variant="contained"
-          sx={{ borderRadius: 3, px: 3, bgcolor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }}
-        >
-          {loadingPreview ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "К оплате →"}
-        </Button>
+      <DialogActions sx={{ px: 3, pb: 2.5, flexDirection: "column", alignItems: "stretch", gap: 1 }}>
+        {selectedDays.size < 2 && (
+          <Typography sx={{ fontSize: "0.75rem", color: "warning.main", textAlign: "center" }}>
+            Выберите минимум 2 дня посещения в неделю
+          </Typography>
+        )}
+        <Stack direction="row" sx={{ justifyContent: "flex-end", gap: 1 }}>
+          <Button onClick={onClose} sx={{ borderRadius: 3, color: "text.secondary" }}>
+            Отмена
+          </Button>
+          <Button
+            onClick={handleGoToPay}
+            disabled={!preview || !priceCalc || hasConflict || loadingPreview || preview.available_spots === 0 || priceCalc.daysCount === 0 || selectedDays.size < 2}
+            variant="contained"
+            sx={{ borderRadius: 3, px: 3, bgcolor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }}
+          >
+            {loadingPreview ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "К оплате →"}
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );
