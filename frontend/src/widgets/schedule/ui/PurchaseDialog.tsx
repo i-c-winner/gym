@@ -211,7 +211,7 @@ export function PurchaseDialog({
 
           <Box>
             <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary", mb: 0.75 }}>
-              Выбирите занятие для посещения. Что бы изменить кол-во посещений в неделю посмотрите расписание.
+              Что бы выбрать подходящее время и дни недели, посмотрите расписание.
             </Typography>
             <Select
               fullWidth size="small"
