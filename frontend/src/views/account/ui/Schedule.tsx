@@ -13,6 +13,7 @@ import {
   Alert,
   Box,
   CircularProgress,
+  GlobalStyles,
   Grid,
   Stack,
   Typography,
@@ -139,6 +140,13 @@ function Schedule() {
   }
 
   return (
+    <>
+    <GlobalStyles styles={{
+      "@keyframes fc-marquee": {
+        "0%":   { transform: "translateX(0)" },
+        "100%": { transform: "translateX(var(--marquee-offset, -80px))" },
+      },
+    }} />
     <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
       <Grid container spacing={{ xs: 2, md: 3 }}>
         <Grid size={{ xs: 12, lg: 2.25 }}>
@@ -166,85 +174,134 @@ function Schedule() {
 
             {/* Основной календарь */}
             <CardShell>
-              <Box
-                sx={(theme) => ({
-                  p: { xs: 1, md: 2.5 },
-                  overflowX: "hidden",
-                  "& .fc": { fontFamily: "inherit" },
-                  "& .fc-toolbar-title": {
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: { xs: "1rem", md: "1.4rem" },
-                    color: theme.palette.text.primary,
-                  },
-                  "& .fc-button": {
-                    bgcolor: "#6a7b6a !important",
-                    border: "none !important",
-                    borderRadius: "10px !important",
-                    px: "10px !important",
-                    minHeight: "44px !important",
-                    fontFamily: "inherit !important",
-                    fontSize: "0.8125rem !important",
-                  },
-                  "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
-                  "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
-                    bgcolor: "#4a5b4a !important",
-                  },
-                  "& .fc-col-header-cell": { color: theme.palette.text.secondary },
-                  "& .fc-event": { cursor: "pointer", borderRadius: "6px !important" },
-                  "& .fc-daygrid-event": { px: "4px" },
-                  ...(theme.palette.mode === "dark" && {
-                    "& .fc": {
-                      "--fc-page-bg-color": theme.palette.background.paper,
-                      "--fc-neutral-bg-color": "rgba(143,163,143,0.07)",
-                      "--fc-neutral-text-color": theme.palette.text.secondary,
-                      "--fc-border-color": "rgba(143,163,143,0.18)",
-                      "--fc-list-event-hover-bg-color": "rgba(143,163,143,0.12)",
-                      "--fc-today-bg-color": "rgba(143,163,143,0.10)",
+              <Box sx={{ p: { xs: 1, md: 2.5 }, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+                <Box
+                  sx={(theme) => ({
+                    minWidth: 750,
+                    /* Marquee: клиппинг на событии + анимация всего frame */
+                    "& .fc-daygrid-event.fc-has-overflow": {
+                      overflow: "hidden",
                     },
-                    "& .fc-list-table td, & .fc-list-table th": {
-                      background: `${theme.palette.background.paper} !important`,
-                      color: `${theme.palette.text.primary} !important`,
-                      borderColor: "rgba(143,163,143,0.15) !important",
+                    "& .fc-daygrid-event.fc-has-overflow:hover .fc-event-main-frame, & .fc-daygrid-event.fc-has-overflow.fc-marquee-active .fc-event-main-frame": {
+                      display: "inline-flex !important",
+                      animation: "fc-marquee 2.5s linear infinite alternate",
                     },
-                    "& .fc-list-event:hover td": { background: "rgba(143,163,143,0.12) !important" },
-                    "& .fc-list-event-title a, & .fc-list-event-title": {
-                      color: `${theme.palette.text.primary} !important`,
+                    "& .fc-daygrid-event.fc-has-overflow:hover .fc-event-title-container, & .fc-daygrid-event.fc-has-overflow.fc-marquee-active .fc-event-title-container": {
+                      flex: "none !important",
+                      minWidth: "max-content !important",
                     },
-                    "& .fc-list-event-time": { color: `${theme.palette.text.secondary} !important` },
-                    "& .fc-list-day-cushion": { background: "rgba(143,163,143,0.14) !important" },
-                    "& .fc-list-day-text, & .fc-list-day-side-text": {
-                      color: `${theme.palette.text.primary} !important`,
+                    "& .fc-daygrid-event.fc-has-overflow:hover .fc-event-time, & .fc-daygrid-event.fc-has-overflow:hover .fc-event-title, & .fc-daygrid-event.fc-has-overflow.fc-marquee-active .fc-event-time, & .fc-daygrid-event.fc-has-overflow.fc-marquee-active .fc-event-title": {
+                      overflow: "visible !important",
+                      maxWidth: "none !important",
+                      whiteSpace: "nowrap !important",
                     },
-                    "& .fc-daygrid-day": { background: `${theme.palette.background.paper} !important` },
-                    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
-                      color: `${theme.palette.text.primary} !important`,
+                    "& .fc": { fontFamily: "inherit" },
+                    "& .fc-toolbar-title": {
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontSize: { xs: "1rem", md: "1.4rem" },
+                      color: theme.palette.text.primary,
                     },
-                    "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
-                      borderColor: "rgba(143,163,143,0.18) !important",
+                    "& .fc-button": {
+                      bgcolor: "#6a7b6a !important",
+                      border: "none !important",
+                      borderRadius: "10px !important",
+                      px: "10px !important",
+                      minHeight: "44px !important",
+                      fontFamily: "inherit !important",
+                      fontSize: "0.8125rem !important",
                     },
-                  }),
-                })}
-              >
-                <FullCalendar
-                  plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-                  locale={ruLocale}
-                  initialView={isMobile ? "listMonth" : "dayGridMonth"}
-                  headerToolbar={isMobile
-                    ? { left: "prev,next", center: "title", right: "today" }
-                    : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }
-                  }
-                  buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
-                  events={fcEvents}
-                  eventClick={handleEventClick}
-                  height="auto"
-                  eventTimeFormat={{ hour: "2-digit", minute: "2-digit", meridiem: false }}
-                  noEventsContent={
-                    <Stack sx={{ py: 6, alignItems: "center", gap: 1 }}>
-                      <FitnessCenterOutlinedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
-                      <Typography sx={{ color: "text.secondary" }}>Нет занятий</Typography>
-                    </Stack>
-                  }
-                />
+                    "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
+                    "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
+                      bgcolor: "#4a5b4a !important",
+                    },
+                    "& .fc-col-header-cell": { color: theme.palette.text.secondary },
+                    "& .fc-event": { cursor: "pointer", borderRadius: "6px !important" },
+                    "& .fc-daygrid-event": { px: "4px" },
+                    ...(theme.palette.mode === "dark" && {
+                      "& .fc": {
+                        "--fc-page-bg-color": theme.palette.background.paper,
+                        "--fc-neutral-bg-color": "rgba(143,163,143,0.07)",
+                        "--fc-neutral-text-color": theme.palette.text.secondary,
+                        "--fc-border-color": "rgba(143,163,143,0.18)",
+                        "--fc-list-event-hover-bg-color": "rgba(143,163,143,0.12)",
+                        "--fc-today-bg-color": "rgba(143,163,143,0.10)",
+                      },
+                      "& .fc-list-table td, & .fc-list-table th": {
+                        background: `${theme.palette.background.paper} !important`,
+                        color: `${theme.palette.text.primary} !important`,
+                        borderColor: "rgba(143,163,143,0.15) !important",
+                      },
+                      "& .fc-list-event:hover td": { background: "rgba(143,163,143,0.12) !important" },
+                      "& .fc-list-event-title a, & .fc-list-event-title": {
+                        color: `${theme.palette.text.primary} !important`,
+                      },
+                      "& .fc-list-event-time": { color: `${theme.palette.text.secondary} !important` },
+                      "& .fc-list-day-cushion": { background: "rgba(143,163,143,0.14) !important" },
+                      "& .fc-list-day-text, & .fc-list-day-side-text": {
+                        color: `${theme.palette.text.primary} !important`,
+                      },
+                      "& .fc-daygrid-day": { background: `${theme.palette.background.paper} !important` },
+                      "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
+                        color: `${theme.palette.text.primary} !important`,
+                      },
+                      "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
+                        borderColor: "rgba(143,163,143,0.18) !important",
+                      },
+                    }),
+                  })}
+                >
+                  <FullCalendar
+                    plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                    locale={ruLocale}
+                    initialView="dayGridMonth"
+                    headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }}
+                    buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
+                    events={fcEvents}
+                    eventClick={handleEventClick}
+                    eventDidMount={(info) => {
+                      const el = info.el;
+                      // setTimeout(0): FullCalendar завершает layout после rAF
+                      setTimeout(() => {
+                        const frameEl = el.querySelector<HTMLElement>(".fc-event-main-frame");
+                        const tcEl    = el.querySelector<HTMLElement>(".fc-event-title-container");
+                        const timeEl  = el.querySelector<HTMLElement>(".fc-event-time");
+                        const titleEl = el.querySelector<HTMLElement>(".fc-event-title");
+                        if (!frameEl) return;
+                        const containerW = el.getBoundingClientRect().width;
+                        if (containerW < 1) return;
+                        // Временно снимаем ограничения для замера
+                        frameEl.style.display = "inline-flex";
+                        if (tcEl)    { tcEl.style.flex = "none"; tcEl.style.minWidth = "max-content"; }
+                        if (timeEl)  { timeEl.style.overflow = "visible"; timeEl.style.maxWidth = "none"; timeEl.style.whiteSpace = "nowrap"; }
+                        if (titleEl) { titleEl.style.overflow = "visible"; titleEl.style.maxWidth = "none"; titleEl.style.whiteSpace = "nowrap"; }
+                        const naturalW = frameEl.getBoundingClientRect().width; // форсирует reflow
+                        // Восстанавливаем
+                        frameEl.style.display = "";
+                        if (tcEl)    { tcEl.style.flex = ""; tcEl.style.minWidth = ""; }
+                        if (timeEl)  { timeEl.style.overflow = ""; timeEl.style.maxWidth = ""; timeEl.style.whiteSpace = ""; }
+                        if (titleEl) { titleEl.style.overflow = ""; titleEl.style.maxWidth = ""; titleEl.style.whiteSpace = ""; }
+                        const overflow = Math.round(naturalW - containerW);
+                        if (overflow > 4) {
+                          el.style.setProperty("--marquee-offset", `-${overflow}px`);
+                          el.classList.add("fc-has-overflow");
+                        }
+                      }, 0);
+                      el.addEventListener("click", () => {
+                        if (navigator.maxTouchPoints > 0) {
+                          el.classList.toggle("fc-marquee-active");
+                        }
+                      });
+                    }}
+                    height="auto"
+                    eventTimeFormat={{ hour: "2-digit", minute: "2-digit", meridiem: false }}
+                    noEventsContent={
+                      <Stack sx={{ py: 6, alignItems: "center", gap: 1 }}>
+                        <FitnessCenterOutlinedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+                        <Typography sx={{ color: "text.secondary" }}>Нет занятий</Typography>
+                      </Stack>
+                    }
+                  />
+                </Box>
               </Box>
             </CardShell>
 
@@ -332,6 +389,7 @@ function Schedule() {
         />
       )}
     </Box>
+    </>
   );
 }
 

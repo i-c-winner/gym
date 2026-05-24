@@ -282,6 +282,67 @@ async def get_sessions_report(
     ]
 
 
+@router.get("/sessions-stats")
+async def get_sessions_stats(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[dict]:
+    """All sessions with booked/attended counts for the overview calendar."""
+    result = await db.execute(
+        select(
+            ClassSession,
+            ClassType,
+            func.count(Booking.id).filter(Booking.status != "cancelled").label("booked_count"),
+            func.count(Booking.id).filter(Booking.status == BookingStatus.ATTENDED).label("attended_count"),
+        )
+        .join(ClassType, ClassType.id == ClassSession.class_type_id)
+        .outerjoin(Booking, Booking.class_session_id == ClassSession.id)
+        .group_by(ClassSession.id, ClassType.id)
+        .order_by(ClassSession.scheduled_at)
+    )
+    rows = result.all()
+    return [
+        {
+            "session_id": str(sess.id),
+            "scheduled_at": sess.scheduled_at.isoformat(),
+            "ends_at": sess.ends_at.isoformat(),
+            "class_type_title": ct.title,
+            "booked_count": booked_count,
+            "attended_count": attended_count,
+        }
+        for sess, ct, booked_count, attended_count in rows
+    ]
+
+
+@router.get("/sessions/{session_id}/participants")
+async def get_session_participants(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[dict]:
+    """List of non-cancelled bookings with user details for a given session."""
+    result = await db.execute(
+        select(Booking, User)
+        .join(User, User.id == Booking.user_id)
+        .where(
+            Booking.class_session_id == session_id,
+            Booking.status != "cancelled",
+        )
+        .order_by(User.first_name, User.last_name)
+    )
+    rows = result.all()
+    return [
+        {
+            "booking_id": str(booking.id),
+            "booking_status": str(booking.status),
+            "user_id": str(user.id),
+            "user_name": " ".join(filter(None, [user.first_name, user.last_name])) or user.telephone or str(user.id),
+            "telephone": user.telephone,
+        }
+        for booking, user in rows
+    ]
+
+
 @router.get("/sessions")
 async def get_all_sessions(
     class_type_id: str | None = None,
