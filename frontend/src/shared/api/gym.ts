@@ -173,6 +173,35 @@ export async function getAdminUserSchedule(userId: string): Promise<ScheduleEven
   return res ?? [];
 }
 
+// ── Admin: sessions overview & participants ───────────────────────────────────
+
+export type SessionStat = {
+  session_id: string;
+  scheduled_at: string;
+  ends_at: string;
+  class_type_title: string;
+  booked_count: number;
+  attended_count: number;
+};
+
+export type SessionParticipant = {
+  booking_id: string;
+  booking_status: string;
+  user_id: string;
+  user_name: string;
+  telephone: string | null;
+};
+
+export async function getAdminSessionsStats(): Promise<SessionStat[]> {
+  const res = await request<SessionStat[]>("/gym/admin/sessions-stats", { method: "GET" });
+  return res ?? [];
+}
+
+export async function getAdminSessionParticipants(sessionId: string): Promise<SessionParticipant[]> {
+  const res = await request<SessionParticipant[]>(`/gym/admin/sessions/${sessionId}/participants`, { method: "GET" });
+  return res ?? [];
+}
+
 // ── User subscriptions & credits ──────────────────────────────────────────────
 
 export type DiscountCredit = {

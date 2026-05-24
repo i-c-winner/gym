@@ -1,20 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme, useMediaQuery } from "@mui/material";
 import {
   Alert,
   Box,
+  Chip,
   CircularProgress,
-  FormControl,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  GlobalStyles,
   Grid,
-  InputLabel,
-  MenuItem,
-  Select,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
   Stack,
   Typography,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -23,7 +30,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import ruLocale from "@fullcalendar/core/locales/ru";
 import type { EventInput } from "@fullcalendar/core";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useUserDisplay } from "@/shared/hooks/useUserDisplay";
 import { useAccountNavItems } from "@/widgets/account-layout/ui/useAccountNavItems";
@@ -31,41 +38,38 @@ import { AccountSidebar } from "@/widgets/account-layout/ui/AccountSidebar";
 import { AccountPageHeader } from "@/widgets/account-layout/ui/AccountPageHeader";
 import { CardShell } from "@/shared/ui/CardShell";
 import {
-  getAdminUsers,
-  getAdminUserSchedule,
-  type TrainerUser,
-  type ScheduleEvent,
+  getAdminSessionsStats,
+  getAdminSessionParticipants,
+  type SessionStat,
+  type SessionParticipant,
 } from "@/shared/api/gym";
 
 // ── Цвета ─────────────────────────────────────────────────────────────────────
 
-const COLOR_ATTENDED = "#43a047"; // зелёный  — тренер отметил посещение
-const COLOR_MISSED = "#ef5350"; // красный  — тренер отметил отсутствие
-const COLOR_UNMARKED = "#f9a825"; // жёлтый   — прошедшее, не отмечено
-const COLOR_UPCOMING = "#6a7b6a"; // серо-зелёный — предстоящее занятие
+const COLOR_ATTENDED = "#43a047";
+const COLOR_MISSED   = "#ef5350";
+const COLOR_UNMARKED = "#f9a825";
+const COLOR_UPCOMING = "#6a7b6a";
+const COLOR_NEUTRAL  = "#8a9a8a";
 
-function eventColor(ev: ScheduleEvent): string {
-  // Нормализуем статус: защита от возможной сериализации StrEnum в верхнем регистре
-  const status = String(ev.booking_status ?? "").toLowerCase();
-  const isPast = new Date(ev.scheduled_at) < new Date();
-  if (status === "attended") return COLOR_ATTENDED;
-  if (status === "absent" || status === "no_show") return COLOR_MISSED;
-  if (status === "confirmed" && isPast) return COLOR_UNMARKED;
-  return COLOR_UPCOMING; // предстоящие подтверждённые
+function sessionColor(s: SessionStat): string {
+  const isPast = new Date(s.scheduled_at) < new Date();
+  if (!isPast) return COLOR_UPCOMING;
+  if (s.booked_count === 0) return COLOR_NEUTRAL;
+  if (s.attended_count === s.booked_count) return COLOR_ATTENDED;
+  if (s.attended_count > 0) return COLOR_UNMARKED;
+  return COLOR_MISSED;
 }
 
-function toFcEvent(ev: ScheduleEvent): EventInput | null {
-  if (String(ev.booking_status ?? "").toLowerCase() === "cancelled") return null;
-  const color = eventColor(ev);
+function sessionToFcEvent(s: SessionStat): EventInput {
   return {
-    id: ev.booking_id,
-    title: ev.class_type_title,
-    start: ev.scheduled_at,
-    end: ev.ends_at,
-    backgroundColor: color,
+    id: s.session_id,
+    title: s.class_type_title,
+    start: s.scheduled_at,
+    end: s.ends_at,
+    backgroundColor: sessionColor(s),
     borderColor: "transparent",
-    textColor: "#fff",
-    extendedProps: ev,
+    extendedProps: s,
   };
 }
 
@@ -74,20 +78,28 @@ function toFcEvent(ev: ScheduleEvent): EventInput | null {
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-      <Box
-        sx={{
-          width: 12,
-          height: 12,
-          borderRadius: "3px",
-          bgcolor: color,
-          flexShrink: 0,
-        }}
-      />
-      <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
-        {label}
-      </Typography>
+      <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: color, flexShrink: 0 }} />
+      <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>{label}</Typography>
     </Stack>
   );
+}
+
+// ── Статус бронирования ───────────────────────────────────────────────────────
+
+function bookingStatusLabel(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "attended")  return "Посетил";
+  if (s === "absent" || s === "no_show") return "Не пришёл";
+  if (s === "confirmed") return "Записан";
+  return status;
+}
+
+function bookingStatusColor(status: string): "success" | "error" | "warning" | "default" {
+  const s = status.toLowerCase();
+  if (s === "attended") return "success";
+  if (s === "absent" || s === "no_show") return "error";
+  if (s === "confirmed") return "warning";
+  return "default";
 }
 
 // ── Стили FullCalendar ────────────────────────────────────────────────────────
@@ -114,11 +126,9 @@ const fcStyles = (
     fontSize: "0.8125rem !important",
   },
   "& .fc-button:hover": { bgcolor: "#5a6b5a !important" },
-  "& .fc-button-active, & .fc-button-primary:not(:disabled):active": {
-    bgcolor: "#4a5b4a !important",
-  },
+  "& .fc-button-active, & .fc-button-primary:not(:disabled):active": { bgcolor: "#4a5b4a !important" },
   "& .fc-col-header-cell": { color: textSecondary },
-  "& .fc-event": { cursor: "default", borderRadius: "6px !important" },
+  "& .fc-event": { cursor: "pointer", borderRadius: "6px !important" },
   "& .fc-daygrid-event": { px: "4px" },
   ...(isDark && {
     "& .fc": {
@@ -134,42 +144,132 @@ const fcStyles = (
       color: `${textPrimary} !important`,
       borderColor: "rgba(143,163,143,0.15) !important",
     },
-    "& .fc-list-event:hover td": {
-      background: "rgba(143,163,143,0.12) !important",
-    },
-    "& .fc-list-event-title a, & .fc-list-event-title": {
-      color: `${textPrimary} !important`,
-    },
+    "& .fc-list-event:hover td": { background: "rgba(143,163,143,0.12) !important" },
+    "& .fc-list-event-title a, & .fc-list-event-title": { color: `${textPrimary} !important` },
     "& .fc-list-event-time": { color: `${textSecondary} !important` },
-    "& .fc-list-day-cushion": {
-      background: "rgba(143,163,143,0.14) !important",
-    },
-    "& .fc-list-day-text, & .fc-list-day-side-text": {
-      color: `${textPrimary} !important`,
-    },
+    "& .fc-list-day-cushion": { background: "rgba(143,163,143,0.14) !important" },
+    "& .fc-list-day-text, & .fc-list-day-side-text": { color: `${textPrimary} !important` },
     "& .fc-daygrid-day": { background: `${paperBg} !important` },
-    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": {
-      color: `${textPrimary} !important`,
-    },
+    "& .fc-daygrid-day-number, & .fc-col-header-cell-cushion": { color: `${textPrimary} !important` },
     "& .fc-scrollgrid, & .fc-theme-standard td, & .fc-theme-standard th": {
       borderColor: "rgba(143,163,143,0.18) !important",
     },
   }),
 });
 
-// ── Отображение имени пользователя ────────────────────────────────────────────
+// ── Диалог участников ─────────────────────────────────────────────────────────
 
-function userLabel(u: TrainerUser): string {
-  const name = [u.first_name, u.last_name].filter(Boolean).join(" ");
-  if (name && u.telephone) return `${name} · ${u.telephone}`;
-  return name || u.telephone || u.id;
+type DialogState = {
+  sessionId: string;
+  title: string;
+  subtitle: string;
+};
+
+function ParticipantsDialog({
+  state,
+  onClose,
+}: {
+  state: DialogState;
+  onClose: () => void;
+}) {
+  const [participants, setParticipants] = useState<SessionParticipant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setErr(null);
+    getAdminSessionParticipants(state.sessionId)
+      .then(setParticipants)
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Ошибка загрузки"))
+      .finally(() => setLoading(false));
+  }, [state.sessionId]);
+
+  const attended = participants.filter(p => p.booking_status.toLowerCase() === "attended").length;
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: 3 } } }}>
+      <DialogTitle sx={{ pb: 0.5 }}>
+        <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box>
+            <Typography sx={{ fontFamily: "Georgia, serif", fontSize: "1.1rem", fontWeight: 600, color: "text.primary" }}>
+              {state.title}
+            </Typography>
+            <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary", mt: 0.25 }}>
+              {state.subtitle}
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={onClose} sx={{ mt: -0.5, mr: -1 }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+
+      <Divider />
+
+      <DialogContent sx={{ pt: 1.5, pb: 2 }}>
+        {loading ? (
+          <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : err ? (
+          <Alert severity="error" sx={{ borderRadius: 2 }}>{err}</Alert>
+        ) : participants.length === 0 ? (
+          <Stack sx={{ py: 4, alignItems: "center", gap: 1 }}>
+            <GroupOutlinedIcon sx={{ fontSize: 36, color: "text.disabled" }} />
+            <Typography sx={{ color: "text.secondary" }}>Нет записавшихся</Typography>
+          </Stack>
+        ) : (
+          <>
+            <Stack direction="row" spacing={2} sx={{ mb: 1.5, px: 0.5 }}>
+              <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+                Записано: <strong>{participants.length}</strong>
+              </Typography>
+              <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
+                Посетило: <strong style={{ color: COLOR_ATTENDED }}>{attended}</strong>
+              </Typography>
+            </Stack>
+
+            <List disablePadding>
+              {participants.map((p, i) => (
+                <Box key={p.booking_id}>
+                  {i > 0 && <Divider component="li" />}
+                  <ListItem
+                    sx={{ py: 1, px: 0.5 }}
+                    secondaryAction={
+                      <Chip
+                        label={bookingStatusLabel(p.booking_status)}
+                        color={bookingStatusColor(p.booking_status)}
+                        size="small"
+                        sx={{ fontSize: "0.6875rem", height: 22 }}
+                      />
+                    }
+                  >
+                    <ListItemText
+                      primary={p.user_name}
+                      secondary={p.telephone ?? undefined}
+                      slotProps={{
+                        primary: { style: { fontSize: "0.9rem" } },
+                        secondary: { style: { fontSize: "0.8125rem" } },
+                      }}
+                    />
+                  </ListItem>
+                </Box>
+              ))}
+            </List>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-// ── Компонент ─────────────────────────────────────────────────────────────────
+// ── Основной компонент ────────────────────────────────────────────────────────
 
 function VisitsPage() {
   const router = useRouter();
   const muiTheme = useTheme();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
   const isDark = muiTheme.palette.mode === "dark";
   const { status, user, logout } = useAuth();
@@ -178,61 +278,28 @@ function VisitsPage() {
 
   const isAdmin = user?.role === "admin";
 
-  const [users, setUsers] = useState<TrainerUser[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions]       = useState<SessionStat[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<DialogState | null>(null);
 
   // Редирект
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "anonymous") {
-      router.replace("/");
-      return;
-    }
-    if (status === "authenticated" && !isAdmin) {
-      router.replace("/account");
-      return;
-    }
+    if (status === "anonymous") { router.replace("/"); return; }
+    if (status === "authenticated" && !isAdmin) { router.replace("/account"); return; }
   }, [status, isAdmin, router]);
 
-  // Загружаем список пользователей
+  // Загрузка данных
   useEffect(() => {
     if (status !== "authenticated" || !isAdmin) return;
-    setLoadingUsers(true);
-    getAdminUsers()
-      .then(setUsers)
-      .catch((e: unknown) =>
-        setError(
-          e instanceof Error ? e.message : "Ошибка загрузки пользователей"
-        )
-      )
-      .finally(() => setLoadingUsers(false));
-  }, [status, isAdmin]);
-
-  // Загружаем расписание выбранного пользователя
-  const loadSchedule = useCallback(async (userId: string) => {
-    setLoadingEvents(true);
+    setLoading(true);
     setError(null);
-    try {
-      const data = await getAdminUserSchedule(userId);
-      setEvents(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка загрузки расписания");
-    } finally {
-      setLoadingEvents(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setEvents([]);
-      return;
-    }
-    void loadSchedule(selectedId);
-  }, [selectedId, loadSchedule]);
+    getAdminSessionsStats()
+      .then(setSessions)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Ошибка загрузки"))
+      .finally(() => setLoading(false));
+  }, [status, isAdmin]);
 
   if (status === "loading") {
     return (
@@ -242,22 +309,21 @@ function VisitsPage() {
     );
   }
 
-  const paperBg = muiTheme.palette.background.paper;
-  const textPrimary = muiTheme.palette.text.primary;
+  const paperBg       = muiTheme.palette.background.paper;
+  const textPrimary   = muiTheme.palette.text.primary;
   const textSecondary = muiTheme.palette.text.secondary;
 
-  const fcEvents: EventInput[] = events
-    .map(toFcEvent)
-    .filter((e): e is EventInput => e !== null);
+  const fcEvents: EventInput[] = sessions.map(sessionToFcEvent);
 
   return (
-    <Box
-      sx={{
-        minHeight: "100dvh",
-        px: { xs: 2, sm: 3, md: 4 },
-        py: { xs: 2, md: 3 },
-      }}
-    >
+    <>
+    <GlobalStyles styles={{
+      "@keyframes fc-marquee": {
+        "0%":   { transform: "translateX(0)" },
+        "100%": { transform: "translateX(var(--marquee-offset, -80px))" },
+      },
+    }} />
+    <Box sx={{ minHeight: "100dvh", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 } }}>
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Sidebar */}
         <Grid size={{ xs: 12, lg: 2.25 }}>
@@ -279,165 +345,99 @@ function VisitsPage() {
             />
 
             {error && (
-              <Alert
-                severity="error"
-                sx={{ borderRadius: 3 }}
-                onClose={() => setError(null)}
-              >
+              <Alert severity="error" sx={{ borderRadius: 3 }} onClose={() => setError(null)}>
                 {error}
               </Alert>
             )}
 
-            {/* Селект пользователя */}
+            {/* Легенда */}
             <CardShell>
-              <Box sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
-                <FormControl fullWidth size="small" disabled={loadingUsers}>
-                  <InputLabel id="user-select-label">
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <PersonOutlineOutlinedIcon sx={{ fontSize: "1rem" }} />
-                      <span>Выберите пользователя</span>
-                    </Stack>
-                  </InputLabel>
-                  <Select
-                    labelId="user-select-label"
-                    value={selectedId}
-                    label={
-                      <Stack
-                        direction="row"
-                        spacing={0.75}
-                        sx={{ alignItems: "center" }}
-                      >
-                        <PersonOutlineOutlinedIcon sx={{ fontSize: "1rem" }} />
-                        <span>Выберите пользователя</span>
-                      </Stack>
-                    }
-                    onChange={(e) => setSelectedId(e.target.value)}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    {loadingUsers ? (
-                      <MenuItem disabled value="">
-                        <CircularProgress size={16} sx={{ mr: 1 }} />{" "}
-                        Загрузка...
-                      </MenuItem>
-                    ) : (
-                      users.map((u) => (
-                        <MenuItem key={u.id} value={u.id}>
-                          {userLabel(u)}
-                        </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                </FormControl>
+              <Box sx={{ px: { xs: 2, md: 3 }, py: 1.75 }}>
+                <Stack direction="row" sx={{ flexWrap: "wrap", gap: { xs: 1.5, sm: 3 } }}>
+                  <LegendDot color={COLOR_ATTENDED} label="Все посетили" />
+                  <LegendDot color={COLOR_MISSED}   label="Никто не пришёл" />
+                  <LegendDot color={COLOR_UNMARKED} label="Частично" />
+                  <LegendDot color={COLOR_UPCOMING} label="Предстоящее занятие" />
+                  <LegendDot color={COLOR_NEUTRAL}  label="Нет записей" />
+                </Stack>
               </Box>
             </CardShell>
 
-            {/* Легенда */}
-            {selectedId && (
-              <CardShell>
-                <Box sx={{ px: { xs: 2, md: 3 }, py: 1.75 }}>
-                  <Stack
-                    direction="row"
-                    sx={{ flexWrap: "wrap", gap: { xs: 1.5, sm: 3 } }}
-                  >
-                    <LegendDot color={COLOR_ATTENDED} label="Посетил" />
-                    <LegendDot color={COLOR_MISSED} label="Не пришёл" />
-                    <LegendDot
-                      color={COLOR_UNMARKED}
-                      label="Тренер не отметил"
-                    />
-                    <LegendDot
-                      color={COLOR_UPCOMING}
-                      label="Предстоящее занятие"
-                    />
-                  </Stack>
-                </Box>
-              </CardShell>
-            )}
-
             {/* Календарь */}
             <CardShell>
-              <Box
-                sx={{
-                  p: { xs: 1, md: 2.5 },
-                  overflowX: "hidden",
-                  ...fcStyles(isDark, paperBg, textPrimary, textSecondary),
-                }}
-              >
-                {loadingEvents ? (
-                  <Box
-                    sx={{ py: 8, display: "flex", justifyContent: "center" }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                ) : (
-                  <FullCalendar
-                    plugins={[
-                      dayGridPlugin,
-                      timeGridPlugin,
-                      listPlugin,
-                      interactionPlugin,
-                    ]}
-                    locale={ruLocale}
-                    initialView={isMobile ? "listMonth" : "dayGridMonth"}
-                    headerToolbar={
-                      isMobile
-                        ? { left: "prev,next", center: "title", right: "today" }
-                        : {
-                            left: "prev,next today",
-                            center: "title",
-                            right: "dayGridMonth,timeGridWeek,listMonth",
-                          }
-                    }
-                    buttonText={{
-                      today: "Сегодня",
-                      month: "Месяц",
-                      week: "Неделя",
-                      list: "Список",
-                    }}
-                    events={fcEvents}
-                    height="auto"
-                    eventTimeFormat={{
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      meridiem: false,
-                    }}
-                    eventDidMount={(info) => {
-                      // Гарантируем применение цвета через DOM — обходит
-                      // любые CSS-конфликты MUI/emotion
-                      const ev = info.event.extendedProps as ScheduleEvent;
-                      const color = eventColor(ev);
-                      info.el.style.setProperty("background-color", color, "important");
-                      info.el.style.setProperty("border-color", "transparent", "important");
-                      info.el.style.setProperty("color", "#fff", "important");
-                      // Текст во вложенных элементах (время, заголовок)
-                      info.el.querySelectorAll<HTMLElement>("*").forEach((child) => {
-                        child.style.setProperty("color", "#fff", "important");
-                      });
-                    }}
-                    noEventsContent={
-                      <Stack sx={{ py: 6, alignItems: "center", gap: 1 }}>
-                        <CalendarMonthOutlinedIcon
-                          sx={{ fontSize: 40, color: "text.disabled" }}
-                        />
-                        <Typography sx={{ color: "text.secondary" }}>
-                          {selectedId
-                            ? "Нет занятий на этот период"
-                            : "Выберите пользователя для просмотра посещений"}
-                        </Typography>
-                      </Stack>
-                    }
-                  />
-                )}
+              <Box sx={{ p: { xs: 1, md: 2.5 }, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+                <Box sx={{ minWidth: 750, ...fcStyles(isDark, paperBg, textPrimary, textSecondary) }}>
+                  {loading ? (
+                    <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <FullCalendar
+                      plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                      locale={ruLocale}
+                      initialView="dayGridMonth"
+                      headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,listMonth" }}
+                      buttonText={{ today: "Сегодня", month: "Месяц", week: "Неделя", list: "Список" }}
+                      events={fcEvents}
+                      height="auto"
+                      eventTimeFormat={{ hour: "2-digit", minute: "2-digit", meridiem: false }}
+                      eventContent={(arg) => {
+                        const s = arg.event.extendedProps as SessionStat;
+                        const isPast = new Date(s.scheduled_at) < new Date();
+                        const dt = new Date(s.scheduled_at);
+                        const timeStr = dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+                        return (
+                          <Box sx={{ px: 0.5, py: 0.125, lineHeight: 1.25, width: "100%", overflow: "hidden" }}>
+                            <Typography
+                              component="div"
+                              sx={{ fontSize: "0.75rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                            >
+                              {timeStr} {s.class_type_title}
+                            </Typography>
+                            <Typography component="div" sx={{ fontSize: "0.6875rem", opacity: 0.88, whiteSpace: "nowrap" }}>
+                              {isPast
+                                ? `${s.booked_count} зап · ${s.attended_count} пос`
+                                : `${s.booked_count} записано`}
+                            </Typography>
+                          </Box>
+                        );
+                      }}
+                      eventClick={(info) => {
+                        const s = info.event.extendedProps as SessionStat;
+                        const dt = new Date(s.scheduled_at);
+                        const dateStr = dt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+                        const timeStr = dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+                        setDialogState({
+                          sessionId: s.session_id,
+                          title: s.class_type_title,
+                          subtitle: `${dateStr}, ${timeStr}`,
+                        });
+                      }}
+                      noEventsContent={
+                        <Stack sx={{ py: 6, alignItems: "center", gap: 1 }}>
+                          <CalendarMonthOutlinedIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+                          <Typography sx={{ color: "text.secondary" }}>
+                            Нет занятий на этот период
+                          </Typography>
+                        </Stack>
+                      }
+                    />
+                  )}
+                </Box>
               </Box>
             </CardShell>
           </Stack>
         </Grid>
       </Grid>
     </Box>
+
+    {dialogState && (
+      <ParticipantsDialog
+        state={dialogState}
+        onClose={() => setDialogState(null)}
+      />
+    )}
+    </>
   );
 }
 

@@ -16,10 +16,10 @@ from app.services.session_service import session_service
 
 async def get_current_session(
     db: AsyncSession = Depends(get_db),
-    session_id: str | None = Cookie(default=None, alias=settings.session_cookie_name),
+    session_cookie: str | None = Cookie(default=None, alias=settings.session_cookie_name),
 ) -> tuple[dict[str, Any], DbSession]:
     try:
-        session_data = await session_service.get_session_data(session_id)
+        session_data = await session_service.get_session_data(session_cookie)
     except RedisError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
