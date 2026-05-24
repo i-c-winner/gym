@@ -26,7 +26,7 @@ import {
   getSessionParticipants,
   markAttendance,
   type TrainerSession,
-  type SessionParticipant,
+  type TrainerParticipant,
   type AbsenceRequest,
 } from "@/shared/api/gym";
 
@@ -59,7 +59,7 @@ export function AttendanceDialog({
   onClose,
   onSaved,
 }: AttendanceDialogProps) {
-  const [participants, setParticipants] = useState<SessionParticipant[]>([]);
+  const [participants, setParticipants] = useState<TrainerParticipant[]>([]);
   const [loading, setLoading] = useState(true);
   const [marks, setMarks] = useState<Record<string, boolean | null>>({});
   const [saving, setSaving] = useState(false);
@@ -109,7 +109,7 @@ export function AttendanceDialog({
     }
   };
 
-  const participantName = (p: SessionParticipant) =>
+  const participantName = (p: TrainerParticipant) =>
     [p.user_first_name, p.user_last_name].filter(Boolean).join(" ") || p.user_telephone || "—";
 
   return (

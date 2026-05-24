@@ -286,7 +286,7 @@ export type TrainerSession = {
   available_spots: number | null;
 };
 
-export type SessionParticipant = {
+export type TrainerParticipant = {
   id: string;
   user_id: string;
   class_session_id: string;
@@ -307,8 +307,8 @@ export async function getTrainerUpcomingSessions(): Promise<TrainerSession[]> {
   return res ?? [];
 }
 
-export async function getSessionParticipants(sessionId: string): Promise<SessionParticipant[]> {
-  const res = await request<SessionParticipant[]>(
+export async function getSessionParticipants(sessionId: string): Promise<TrainerParticipant[]> {
+  const res = await request<TrainerParticipant[]>(
     `/gym/trainer/sessions/${sessionId}/participants`,
     { method: "GET" },
   );
